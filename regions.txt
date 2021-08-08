@@ -1,0 +1,6 @@
+ATO:Austria
+AUT:Switzerland
+BTU:United Kingdom
+DBT:Germany
+XAR:United States
+XEF:France

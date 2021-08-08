@@ -1,0 +1,60 @@
+name: Check for firmware and kernel updates
+
+on:
+  schedule:
+    - cron: '0 * * * *'
+  push:
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v2
+      with:
+        submodules: true
+
+    - name: Install dependencies
+      run: |
+       sudo apt-get update
+       sudo apt-get install -y build-essential cmake gperf maven openjdk-16-jdk-headless screen
+       git submodule update --init --recursive
+       cd telegram-bot-api
+       mkdir build
+       cd build
+       cmake ..
+       make -j$(nproc)
+       cd ../..
+       mvn clean package
+
+    - name: Start local bot API server
+      env:
+       API_ID: ${{ secrets.API_ID }}
+       API_HASH: ${{ secrets.API_HASH }}
+      run: |
+       screen -dmS telegram-bot-api ./telegram-bot-api/build/telegram-bot-api --api-id=$API_ID --api-hash=$API_HASH --local --http-port=8082
+
+    - name: Run bot
+      env:
+       BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+      run: |
+       java -Dsun.net.client.defaultReadTimeout=60000 -Dsun.net.client.defaultConnectTimeout=60000 -jar target/SamsungFirmwareBot.jar samsungfirmware_bot $BOT_TOKEN @samsungfw_tracker @samsungkernel_tracker oneshot
+
+    - name: Kill local bot API server
+      run: |
+       killall telegram-bot-api
+
+    - name: Update databases
+      run: |
+       git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+       git config --local user.name "github-actions[bot]"
+       git pull origin ${{github.ref}} --ff-only
+       git add *.db
+       git commit -m "samsungfwbot: $(date)" || true
+
+    - name: Push changes to repo
+      uses: ad-m/github-push-action@master
+      with:
+        tags: true
+        github_token: ${{ secrets.GITHUB_TOKEN }}
