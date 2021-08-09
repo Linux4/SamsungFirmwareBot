@@ -64,6 +64,7 @@ public class SamsungFWBot extends TelegramLongPollingBot {
 
                 KNOWN_REGIONS.put(line.split(":")[0], line.split(":")[1]);
             }
+            reader.close();
             // load devices
             reader = new BufferedReader(new FileReader("devices.txt"));
 
@@ -73,6 +74,7 @@ public class SamsungFWBot extends TelegramLongPollingBot {
 
                 KNOWN_MODELS.add(line);
             }
+            reader.close();
         } catch (IOException ex) {
             ex.printStackTrace();
         }
@@ -104,12 +106,14 @@ public class SamsungFWBot extends TelegramLongPollingBot {
 
         do {
             for (String model : KNOWN_MODELS) {
+                System.out.println("Processing model " + model);
                 boolean found = false;
 
                 for (String region : KNOWN_REGIONS.keySet()) {
                     SamsungFWInfo info = SamsungFWInfo.fetchLatest(model, region);
 
                     if (info != null) {
+                        System.out.println(String.format("Found firmware %s/%s for model %s", info.getPDA(), region, model));
                         found = true;
 
                         if (info.isNewerThan(db.getPDA(model))) {
@@ -120,18 +124,17 @@ public class SamsungFWBot extends TelegramLongPollingBot {
                             InlineKeyboardMarkup keyboard = keyboardBuilder.build();
 
                             SendMessage sm = new SendMessage();
-                            sm.setText("New firmware update available!\n" +
-                                    "\n" +
-                                    "Device: " + info.getDeviceName() + "\n" +
-                                    "Model: " + info.getModel() + "\n" +
-                                    "Region: " + info.getRegion() + " (" + KNOWN_REGIONS.get(info.getRegion()) + ")" + "\n" +
-                                    "OS Version: " + info.getOSVersion() + "\n" +
-                                    "PDA Version: " + info.getPDA() + "\n" +
-                                    "Release Date: " + SamsungFWInfo.DATE_FORMAT.format(info.getBuildDate()) + "\n" +
-                                    "Security Patch Level: " + SamsungFWInfo.DATE_FORMAT.format(info.getSecurityPatch()) + "\n" +
-                                    "\n" +
-                                    "Changelog: \n" +
-                                    info.getChangelog());
+                            sm.setText(String.format("New firmware update available \n \n "
+                            + "Device: %s \n"
+                            + "Model: %s \n"
+                            + "Region: %s \n"
+                            + "OS Version: %s \n"
+                            + "PDA Version: %s \n"
+                            + "Release Date: %s \n"
+                            + "Security Patch Level: %s \n"
+                            + "\n Changelog: %s \n", 
+                            info.getDeviceName(), info.getModel(), info.getRegion(), info.getOSVersion(), info.getPDA(),
+                            SamsungFWInfo.DATE_FORMAT.format(info.getBuildDate()), SamsungFWInfo.DATE_FORMAT.format(info.getSecurityPatch()), info.getChangelog()));
                             sm.setReplyMarkup(keyboard);
                             sm.setChatId(channelFw);
 
@@ -157,19 +160,22 @@ public class SamsungFWBot extends TelegramLongPollingBot {
                         new Thread(() -> {
                             try {
                                 SendDocument sd = new SendDocument();
-                                sd.setCaption("New kernel sources available!\n" +
-                                        "\n" +
-                                        "Model: " + info.getModel() + "\n" +
-                                        "PDA Version: " + info.getPDA());
+                                sd.setCaption(String.format("New kernel sources available! \n"
+                                + "Model: %s \n"
+                                + "PDA Version: %s \n", 
+                                info.getModel(), info.getPDA()));
                                 sd.setChatId(channelKernel);
 
+                                System.out.println("Downloading kernel source for " + model);
                                 File result = info.download(new File("/tmp"));
 
                                 if (result != null) {
+                                    System.out.println("Uploading kernel source for " + model);
                                     sd.setDocument(new InputFile(result));
                                     execute(sd);
 
                                     result.delete();
+                                    System.out.println("Finished kernel source upload for " + model);
                                 } else {
                                     System.err.println("ERROR: Failed to download " + info);
                                     kernelDb.setPDA(model, oldPDA); // retry download
@@ -185,7 +191,7 @@ public class SamsungFWBot extends TelegramLongPollingBot {
 
                 // Sleep to prevent telegram spam protection
                 try {
-                    Thread.sleep(10000); // 10s
+                    Thread.sleep(10*1000); // 10s
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
@@ -200,7 +206,7 @@ public class SamsungFWBot extends TelegramLongPollingBot {
 
             if (!oneshot) {
                 try {
-                    Thread.sleep(3600000); // 1h
+                    Thread.sleep(60*60*1000); // 1h
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
