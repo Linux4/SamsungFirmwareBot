@@ -112,14 +112,14 @@ public class SamsungFWInfo {
 
     public static SamsungFWInfo fetchLatest(String model, String region) throws IOException, ParseException {
         try {
-            Document doc = Jsoup.connect(DOC_BASE_URL + model + "/" + region + DOC_NAME).get();
+            Document doc = Jsoup.connect(DOC_BASE_URL + model + "/" + region + DOC_NAME).timeout(10*60*1000).get();
 
             Element input = doc.getElementById("dflt_page");
 
             if (input != null) {
                 String magic = input.val().split("/")[3];
 
-                Document changelog = Jsoup.connect(DOC_BASE_URL + model + "/" + magic + DOC_ENG).get();
+                Document changelog = Jsoup.connect(DOC_BASE_URL + model + "/" + magic + DOC_ENG).timeout(10*60*1000).get();
                 Elements changelogEntries = changelog.getElementsByClass("row");
 
                 if (changelogEntries.size() >= 2) {

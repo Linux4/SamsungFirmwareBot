@@ -80,7 +80,7 @@ public class SamsungKernelInfo {
 
     public static SamsungKernelInfo fetchLatest(String model) throws IOException {
         try {
-            Document doc = Jsoup.connect(OSS_SEARCH_URL + model).get();
+            Document doc = Jsoup.connect(OSS_SEARCH_URL + model).timeout(10*60*1000).get();
 
             Elements tableData = doc.getElementsByTag("td");
 
@@ -108,7 +108,7 @@ public class SamsungKernelInfo {
     public File download(File folder) throws IOException {
         File dst = new File(folder, model + "-" + pda + ".zip");
 
-        Connection.Response res = Jsoup.connect(OSS_BASE_URL + "/downSrcMPop?uploadId=" + uploadId).execute();
+        Connection.Response res = Jsoup.connect(OSS_BASE_URL + "/downSrcMPop?uploadId=" + uploadId).timeout(10*60*1000).execute();
         Document doc = res.parse();
         Elements _csrfElem = doc.getElementsByAttributeValue("name", "_csrf");
         Elements checkboxes = doc.getElementsByAttributeValue("type", "checkbox");
