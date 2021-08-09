@@ -21,8 +21,10 @@ jobs:
 
     - name: Install dependencies
       run: |
+       sudo sh -c 'echo "deb http://de.archive.ubuntu.com/ubuntu hirsute main restricted universe multiverse" >> /etc/apt/sources.list'
        sudo apt-get update
-       sudo apt-get install -y build-essential cmake gperf maven openjdk-16-jdk-headless screen
+       sudo apt-get install -y build-essential cmake gperf maven openjdk-17-jdk-headless screen
+       sudo apt-get purge -y adoptopenjdk-*
        git submodule update --init --recursive
        cd telegram-bot-api
        mkdir build
@@ -30,6 +32,7 @@ jobs:
        cmake ..
        make -j$(nproc)
        cd ../..
+       JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
        mvn clean package
 
     - name: Start local bot API server
@@ -43,7 +46,7 @@ jobs:
       env:
        BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
       run: |
-       java -Dsun.net.client.defaultReadTimeout=60000 -Dsun.net.client.defaultConnectTimeout=60000 -jar target/SamsungFirmwareBot.jar samsungfirmware_bot $BOT_TOKEN @samsungfw_tracker @samsungkernel_tracker oneshot
+       java -jar target/SamsungFirmwareBot.jar samsungfirmware_bot $BOT_TOKEN @samsungfw_tracker @samsungkernel_tracker oneshot
 
     - name: Kill local bot API server
       run: |
