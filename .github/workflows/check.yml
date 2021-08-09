@@ -5,6 +5,10 @@ on:
     - cron: '0 * * * *'
   push:
 
+concurrency: 
+  group: ci-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   update:
     runs-on: ubuntu-latest
