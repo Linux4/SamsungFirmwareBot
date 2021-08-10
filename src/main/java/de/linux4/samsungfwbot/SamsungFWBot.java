@@ -162,6 +162,9 @@ public class SamsungFWBot extends TelegramLongPollingBot {
                 sleep();
             }
             System.out.println("Upload thread end");
+
+            if (oneshot)
+                System.exit(0);
         }).start();
 
         List<Thread> threads = new LinkedList<>();
