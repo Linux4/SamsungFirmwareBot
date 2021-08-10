@@ -25,15 +25,8 @@ jobs:
        git pull origin ${{github.ref}} --ff-only
        sudo sh -c 'echo "deb http://de.archive.ubuntu.com/ubuntu hirsute main restricted universe multiverse" >> /etc/apt/sources.list'
        sudo apt-get update
-       sudo apt-get install -y build-essential cmake gperf maven openjdk-17-jdk-headless screen
+       sudo apt-get install -y build-essential cmake maven openjdk-17-jdk-headless screen
        sudo apt-get purge -y adoptopenjdk-*
-       git submodule update --init --recursive
-       cd telegram-bot-api
-       mkdir build
-       cd build
-       cmake ..
-       make -j$(nproc)
-       cd ../..
        JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
        mvn clean package
 
@@ -42,7 +35,7 @@ jobs:
        API_ID: ${{ secrets.API_ID }}
        API_HASH: ${{ secrets.API_HASH }}
       run: |
-       screen -dmS telegram-bot-api ./telegram-bot-api/build/telegram-bot-api --api-id=$API_ID --api-hash=$API_HASH --local --http-port=8082
+       screen -dmS telegram-bot-api ./prebuilts/bin/telegram-bot-api --api-id=$API_ID --api-hash=$API_HASH --local --http-port=8082
 
     - name: Run bot
       env:
