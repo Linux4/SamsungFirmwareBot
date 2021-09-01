@@ -62,15 +62,20 @@ public class SamsungKernelInfo {
     private static int getPDAVersion(String pda) {
         int version = 0;
 
-        for (int i = pda.length() - 4; i < pda.length(); i++) {
+        for (int i = pda.length() - 4; i < pda.length() - 1; i++) {
             version += pda.charAt(i);
         }
 
         return version;
     }
 
+    private static int getMinorVersion(String pda) {
+        return pda.charAt(pda.length() - 1);
+    }
+
     public boolean isNewerThan(String oldPDA) {
-        return oldPDA.length() < 4 || (pda.length() >= 4 && getPDAVersion(oldPDA) < getPDAVersion(pda));
+        return oldPDA.length() < 4 || (pda.length() >= 4 && (getPDAVersion(oldPDA) < getPDAVersion(pda)
+                || (getPDAVersion(oldPDA) == getPDAVersion(pda) && getMinorVersion(oldPDA) < getMinorVersion(pda))));
     }
 
     @Override
@@ -80,7 +85,7 @@ public class SamsungKernelInfo {
 
     public static SamsungKernelInfo fetchLatest(String model) throws IOException {
         try {
-            Document doc = Jsoup.connect(OSS_SEARCH_URL + model).timeout(10*60*1000).get();
+            Document doc = Jsoup.connect(OSS_SEARCH_URL + model).timeout(10 * 60 * 1000).get();
 
             Elements tableData = doc.getElementsByTag("td");
 
@@ -108,7 +113,7 @@ public class SamsungKernelInfo {
     public File download(File folder) throws IOException {
         File dst = new File(folder, model + "-" + pda + ".zip");
 
-        Connection.Response res = Jsoup.connect(OSS_BASE_URL + "/downSrcMPop?uploadId=" + uploadId).timeout(10*60*1000).execute();
+        Connection.Response res = Jsoup.connect(OSS_BASE_URL + "/downSrcMPop?uploadId=" + uploadId).timeout(10 * 60 * 1000).execute();
         Document doc = res.parse();
         Elements _csrfElem = doc.getElementsByAttributeValue("name", "_csrf");
         Elements checkboxes = doc.getElementsByAttributeValue("type", "checkbox");

@@ -93,15 +93,20 @@ public class SamsungFWInfo {
     private static int getPDAVersion(String pda) {
         int version = 0;
 
-        for (int i = pda.length() - 4; i < pda.length(); i++) {
+        for (int i = pda.length() - 4; i < pda.length() - 1; i++) {
             version += pda.charAt(i);
         }
 
         return version;
     }
 
+    private static int getMinorVersion(String pda) {
+        return pda.charAt(pda.length() - 1);
+    }
+
     public boolean isNewerThan(String oldPDA) {
-        return oldPDA.length() < 4 || (pda.length() >= 4 && getPDAVersion(oldPDA) < getPDAVersion(pda));
+        return oldPDA.length() < 4 || (pda.length() >= 4 && (getPDAVersion(oldPDA) < getPDAVersion(pda)
+                || (getPDAVersion(oldPDA) == getPDAVersion(pda) && getMinorVersion(oldPDA) < getMinorVersion(pda))));
     }
 
     @Override
