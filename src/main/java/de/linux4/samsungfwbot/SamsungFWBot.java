@@ -193,7 +193,6 @@ public class SamsungFWBot extends TelegramLongPollingBot {
                                             \s
                                             Device: %s\s
                                             Model: %s\s
-                                            Region: %s\s
                                             OS Version: %s\s
                                             PDA Version: %s\s
                                             Release Date: %s\s
@@ -202,7 +201,7 @@ public class SamsungFWBot extends TelegramLongPollingBot {
                                             Changelog: \s
                                             %s\s
                                             """,
-                                    info.getDeviceName(), info.getModel(), info.getRegion(), info.getOSVersion(), info.getPDA(),
+                                    info.getDeviceName(), info.getModel(), info.getOSVersion(), info.getPDA(),
                                     SamsungFWInfo.DATE_FORMAT.format(info.getBuildDate()), SamsungFWInfo.DATE_FORMAT.format(info.getSecurityPatch()),
                                     info.getChangelog()),
                                     keyboard));
