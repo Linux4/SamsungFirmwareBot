@@ -225,15 +225,6 @@ public class SamsungFWBot extends TelegramLongPollingBot {
 
                         Thread thread = new Thread(() -> {
                             try {
-                                SendDocument sd = new SendDocument();
-                                sd.setCaption(String.format("""
-                                                New kernel sources available!\s
-                                                Model: %s\s
-                                                PDA Version: %s\s
-                                                """,
-                                        info.getModel(), info.getPDA()));
-                                sd.setChatId(channelKernel);
-
                                 System.out.println("Downloading kernel source for " + model);
                                 File result = info.download(new File("/tmp"));
 
@@ -242,8 +233,11 @@ public class SamsungFWBot extends TelegramLongPollingBot {
                                                     New kernel sources available!\s
                                                     Model: %s\s
                                                     PDA Version: %s\s
+                                                    %s
                                                     """,
-                                            info.getModel(), info.getPDA()), result));
+                                            info.getModel(), info.getPDA(), info.getPatchKernel() != null ?
+                                                    String.format("This is a patch over %s\s", info.getPatchKernel()) : ""),
+                                            result));
                                 } else {
                                     System.err.println("ERROR: Failed to download " + info);
                                     kernelDb.setPDA(model, oldPDA); // retry download

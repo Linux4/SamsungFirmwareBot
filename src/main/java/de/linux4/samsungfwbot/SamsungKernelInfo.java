@@ -40,11 +40,13 @@ public class SamsungKernelInfo {
     private final String model;
     private final String pda;
     private final String uploadId;
+    private final String patchKernel;
 
-    public SamsungKernelInfo(String model, String pda, String uploadId) {
+    public SamsungKernelInfo(String model, String pda, String uploadId, String patchKernel) {
         this.model = model;
         this.pda = pda;
         this.uploadId = uploadId;
+        this.patchKernel = patchKernel;
     }
 
     public String getModel() {
@@ -57,6 +59,11 @@ public class SamsungKernelInfo {
 
     public String getUploadID() {
         return uploadId;
+    }
+
+    // The kernel version this is a patch over, null if standalone
+    public String getPatchKernel() {
+        return patchKernel;
     }
 
     private static int getPDAVersion(String pda) {
@@ -80,7 +87,7 @@ public class SamsungKernelInfo {
 
     @Override
     public String toString() {
-        return "SamsungKernel(" + model + ", " + pda + ", " + uploadId + ")";
+        return "SamsungKernel(" + model + ", " + pda + ", " + uploadId + ", " + patchKernel + ")";
     }
 
     public static SamsungKernelInfo fetchLatest(String model) throws IOException {
@@ -101,7 +108,17 @@ public class SamsungKernelInfo {
                 if (broken.length > 1)
                     uploadId = broken[1].strip();
 
-                return new SamsungKernelInfo(model, fwVersion, uploadId);
+                // Check if there is a patch zip file for a newer PDA version!
+                String[] downloadFiles = tableData.get(3).html().strip().split("<br>");
+                if (downloadFiles.length > 1) {// patch found
+                    // <model>_<android version>_Opensource_<PDA>.zip
+                    broken = downloadFiles[downloadFiles.length - 1].split("_");
+                    String patchVersion = broken[broken.length - 1].split("\\.")[0];
+
+                    return new SamsungKernelInfo(model, patchVersion, uploadId, fwVersion);
+                }
+
+                return new SamsungKernelInfo(model, fwVersion, uploadId, null);
             }
         } catch (HttpStatusException ignored) {
 
@@ -120,7 +137,34 @@ public class SamsungKernelInfo {
 
         if (_csrfElem.size() > 0 && checkboxes.size() > 1) {
             String _csrf = _csrfElem.get(0).val();
-            String attachIds = checkboxes.get(1).id();
+            String attachIds = null;
+
+            if (patchKernel == null) {
+                attachIds = checkboxes.get(1).id();
+            } else {
+                Elements rows = doc.getElementsByTag("tr");
+
+                for (Element row : rows) {
+                    Elements rowData = row.getElementsByTag("td");
+
+                    if (rowData.size() >= 2) {
+                        String downloadFile = rowData.get(1).html();
+                        if (downloadFile.endsWith(pda + ".zip")) {
+                            checkboxes = row.getElementsByAttributeValue("type", "checkbox");
+
+                            if (checkboxes.size() > 0) {
+                                attachIds = checkboxes.get(0).id();
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (attachIds == null || attachIds.isEmpty()) {
+                System.err.println("Did not find attachment for " + this);
+                return null;
+            }
 
             Element tokenElem = doc.getElementById("token");
 
