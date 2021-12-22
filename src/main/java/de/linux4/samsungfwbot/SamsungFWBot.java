@@ -57,8 +57,16 @@ public class SamsungFWBot extends TelegramLongPollingBot {
 
     public static void main(String[] args) {
         if (args.length != 4 && args.length != 5) {
+            if (args.length == 1 && args[0].equalsIgnoreCase("scrapeDevices")) {
+                try {
+                    SamsungDeviceScraper.main(args);
+                } catch (Exception ignored) {
+                }
+                return;
+            }
             // channels can be id or @channelname
             System.out.println("Usage: java -jar samsungfwbot.jar <bot name> <bot token> <firmware channel> <kernel channel> [oneshot]");
+            System.out.println("Usage: java -jar samsungfwbot.jar scrapeDevices");
             return;
         }
 
