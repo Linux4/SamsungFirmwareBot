@@ -1,0 +1,63 @@
+name: Fetch all models from gsmarena
+
+on:
+  schedule:
+    - cron: '0 0 0 * *'
+  push:
+  workflow_dispatch:
+
+concurrency: 
+  group: ci-fetch-devices-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v2
+      with:
+        submodules: true
+
+    - name: Install dependencies
+      run: |
+        git pull origin ${{github.ref}} --ff-only
+        sudo apt purge -y adoptopenjdk-*
+        sudo sh -c 'echo "deb http://de.archive.ubuntu.com/ubuntu hirsute main restricted universe multiverse" >> /etc/apt/sources.list'
+        sudo apt update
+        sudo apt install -y maven openjdk-17-jdk-headless
+
+    - name: Build
+      run: |
+        JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+        mvn clean package
+
+    - name: Print External IP Adress
+      run: curl v4.ident.me
+
+    - name: Run bot
+      env:
+       BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+      run: |
+        java -jar target/SamsungFirmwareBot.jar scrapeDevices
+
+    - name: Upload result
+      uses: actions/upload-artifact@v2
+      with:
+        path: devices.txt
+
+    - name: Update devices
+      run: |
+        git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git config --local user.name "github-actions[bot]"
+        git pull origin ${{github.ref}} --ff-only
+        git add devices.txt
+        git commit -m "samsungfwbot: Devices list update $(date)" || true
+
+    - name: Push changes to repo
+      uses: ad-m/github-push-action@master
+      with:
+        tags: true
+        branch: ${{ github.ref }}
+        github_token: ${{ secrets.GITHUB_TOKEN }}
