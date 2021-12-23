@@ -29,18 +29,13 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKe
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.updatesreceivers.DefaultBotSession;
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
 import java.text.ParseException;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class SamsungFWBot extends TelegramLongPollingBot {
-
-    public static final HashMap<String, String> KNOWN_REGIONS = new HashMap<>();
-    public static final List<String> KNOWN_MODELS = new ArrayList<>();
 
     public static void main(String[] args) {
         if (args.length != 4 && args.length != 5) {
@@ -58,32 +53,6 @@ public class SamsungFWBot extends TelegramLongPollingBot {
         }
 
         boolean oneshot = args.length == 5 && args[4].equalsIgnoreCase("oneshot");
-
-        try {
-            // load regions
-            BufferedReader reader = new BufferedReader(new FileReader("regions.txt"));
-            String line;
-
-            while (((line = reader.readLine())) != null) {
-                if (line.startsWith("#"))
-                    continue;
-
-                KNOWN_REGIONS.put(line.split(":")[0], line.split(":")[1]);
-            }
-            reader.close();
-            // load devices
-            reader = new BufferedReader(new FileReader("devices.txt"));
-
-            while (((line = reader.readLine())) != null) {
-                if (line.startsWith("#"))
-                    continue;
-
-                KNOWN_MODELS.add(line);
-            }
-            reader.close();
-        } catch (IOException ex) {
-            ex.printStackTrace();
-        }
 
         try {
             TelegramBotsApi botApi = new TelegramBotsApi(DefaultBotSession.class);
@@ -119,6 +88,7 @@ public class SamsungFWBot extends TelegramLongPollingBot {
 
         SamsungFWDatabase db = new SamsungFWDatabase("samsungfw.db");
         SamsungFWDatabase kernelDb = new SamsungFWDatabase("samsungkernel.db");
+        SamsungDeviceDatabase deviceDb = new SamsungDeviceDatabase();
 
         new Thread(() -> {
             System.out.println("Upload thread start");
@@ -152,7 +122,6 @@ public class SamsungFWBot extends TelegramLongPollingBot {
                         SendMessage sm = new SendMessage();
                         sm.setChatId(message.getChannelId());
                         String text = message.getText();
-                        System.out.println("Message length = " + text.length());
                         text = text.substring(0, Math.min(text.length(), 4096));
                         sm.setText(text);
 
@@ -181,13 +150,13 @@ public class SamsungFWBot extends TelegramLongPollingBot {
         List<Thread> threads = new LinkedList<>();
 
         do {
-            for (String model : KNOWN_MODELS) {
+            for (String model : deviceDb.getAllModels()) {
                 String fwModel = model.contains(":") ? model.split(":")[0] : model;
                 String kernelModel = model.contains(":") ? model.split(":")[1] : model;
                 System.out.println("Processing model " + fwModel);
                 boolean found = false;
 
-                for (String region : KNOWN_REGIONS.keySet()) {
+                for (String region : deviceDb.getRegionsByModel(model)) {
                     SamsungFWInfo info = SamsungFWInfo.fetchLatest(fwModel, region);
 
                     if (info != null) {
@@ -225,17 +194,14 @@ public class SamsungFWBot extends TelegramLongPollingBot {
                 }
 
                 if (!found) {
-                    System.err.println("ERROR: Model " + fwModel + " not found in any known region! Known Regions: " + KNOWN_REGIONS.keySet());
+                    System.err.println("ERROR: Firmware for " + fwModel + " not found in regions "
+                            + deviceDb.getRegionsByModel(model));
                 }
 
                 SamsungKernelInfo info = SamsungKernelInfo.fetchLatest(kernelModel);
 
                 if (info != null) {
-                    if (info.isNewerThan(kernelDb.getPDA(kernelModel)) && false) {
-                        // Prevent duplicate DL
-                        String oldPDA = kernelDb.getPDA(kernelModel);
-                        kernelDb.setPDA(kernelModel, info.getPDA());
-
+                    if (info.isNewerThan(kernelDb.getPDA(kernelModel))) {
                         Thread thread = new Thread(() -> {
                             try {
                                 System.out.println("Downloading kernel source for " + kernelModel);
@@ -251,9 +217,9 @@ public class SamsungFWBot extends TelegramLongPollingBot {
                                             info.getModel(), info.getPDA(), info.getPatchKernel() != null ?
                                                     String.format("This is a patch over %s\s", info.getPatchKernel()) : ""),
                                             result));
+                                    kernelDb.setPDA(kernelModel, info.getPDA());
                                 } else {
                                     System.err.println("ERROR: Failed to download " + info);
-                                    kernelDb.setPDA(kernelModel, oldPDA); // retry download
                                 }
                             } catch (IOException ex) {
                                 ex.printStackTrace();
@@ -267,12 +233,17 @@ public class SamsungFWBot extends TelegramLongPollingBot {
                 }
             }
 
-            SetChatDescription sdesc = new SetChatDescription();
-            sdesc.setDescription("Last updated: " + new Date(System.currentTimeMillis()));
-            sdesc.setChatId(channelFw);
-            execute(sdesc);
-            sdesc.setChatId(channelKernel);
-            execute(sdesc);
+            try {
+                SetChatDescription sdesc = new SetChatDescription();
+                sdesc.setDescription("Last updated: " + new Date(System.currentTimeMillis()));
+                sdesc.setChatId(channelFw);
+                execute(sdesc);
+                if (channelFw != channelKernel) {
+                    sdesc.setChatId(channelKernel);
+                    execute(sdesc);
+                }
+            } catch (Exception ignored) {
+            }
 
             if (!oneshot) {
                 try {
