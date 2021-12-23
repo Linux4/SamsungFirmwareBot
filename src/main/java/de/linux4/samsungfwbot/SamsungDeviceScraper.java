@@ -10,6 +10,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import com.google.common.collect.Streams;
@@ -19,16 +20,21 @@ import org.jsoup.nodes.Document;
 import org.jsoup.select.Elements;
 
 public class SamsungDeviceScraper {
-    private record DeviceMeta(
-            String name,
-            String url,
-            String imgURL,
-            String meta,
-            Map<String, Map<String, String>> details) {
+    private static class DeviceMeta {
+        String name = null;
+        String url = null;
+        String imgURL = null;
+        String shortDescription = null;
+        Map<String, Map<String, String>> details = new HashMap<>();
+        String modelSupername = null;
+        Set<String> models = new HashSet<>();
+        Map<String, Set<String>> regions = new HashMap<>();
     }
 
-    private static final String BASE_URL = "https://www.gsmarena.com/";
-    private static final String DEVICES_LIST_URL = BASE_URL + "samsung-phones-f-9-0-p%d.php";
+    private static final String GSMARENA_BASE_URL = "https://www.gsmarena.com/";
+    private static final String SAMFW_BASE_URL = "https://samfw.com/";
+    private static final String DEVICES_LIST_URL = GSMARENA_BASE_URL + "samsung-phones-f-9-0-p%d.php";
+    private static final String REGIONS_URL = SAMFW_BASE_URL + "firmware/%s";
     private static final String MODELS_FILE_NAME = "devices.txt";
     private static final int FETCH_TIMEOUT = 1 * 60 * 1000;
     private static final int FETCH_INTERVAL = 3 * 1000;
@@ -50,11 +56,12 @@ public class SamsungDeviceScraper {
             Document doc = request(String.format(DEVICES_LIST_URL, pageNumber));
             Elements el = doc.select("#review-body > div.makers > ul > li");
             return el.stream().map(element -> {
-                String name = element.select("a > strong > span").first().text();
-                String url = element.select("a").first().attributes().get("href");
-                String imgURL = element.select("a > img").first().attributes().get("src");
-                String meta = element.select("a > img").first().attributes().get("title");
-                return new DeviceMeta(name, url, imgURL, meta, new HashMap<>());
+                DeviceMeta deviceMeta = new DeviceMeta();
+                deviceMeta.name = element.select("a > strong > span").first().text();
+                deviceMeta.url = element.select("a").first().attributes().get("href");
+                deviceMeta.imgURL = element.select("a > img").first().attributes().get("src");
+                deviceMeta.shortDescription = element.select("a > img").first().attributes().get("title");
+                return deviceMeta;
             }).toList();
         } catch (Exception e) {
             e.printStackTrace();
@@ -93,10 +100,9 @@ public class SamsungDeviceScraper {
     }
 
     private static String getModelSupername(DeviceMeta deviceMeta) {
-        List<String> models = new ArrayList<>(getNormalizedModels(deviceMeta));
-        if (models.size() == 0)
+        if (deviceMeta.models.size() == 0)
             return "";
-        return models.stream().reduce((x, y) -> {
+        return deviceMeta.models.stream().reduce((x, y) -> {
             int i = 0;
             for (i = 0; i < Math.min(x.length(), y.length()); i++) {
                 if (x.charAt(i) != y.charAt(i))
@@ -118,7 +124,7 @@ public class SamsungDeviceScraper {
 
     private static DeviceMeta fillDetails(DeviceMeta deviceMeta) {
         try {
-            Document doc = request(BASE_URL + deviceMeta.url);
+            Document doc = request(GSMARENA_BASE_URL + deviceMeta.url);
             Elements tables = doc.select("#specs-list > table");
             tables.forEach(table -> {
                 String category = table.select("tbody > tr:nth-child(1) > th").text();
@@ -130,6 +136,20 @@ public class SamsungDeviceScraper {
                     innerMap.put(header, content);
                 });
                 deviceMeta.details.put(category, innerMap);
+            });
+            deviceMeta.models.addAll(getNormalizedModels(deviceMeta));
+            deviceMeta.modelSupername = getModelSupername(deviceMeta);
+            deviceMeta.models.forEach(model -> {
+                try {
+                    Document document = request(String.format(REGIONS_URL, model));
+                    Elements regionElements = document.select(
+                            "body > div.intro.bg-light > div > div > div > div > div.card-body.text-justify.card-csc > div.item_csc > a > b");
+                    Set<String> regionSet = regionElements.stream().map(element -> element.text())
+                            .collect(Collectors.toSet());
+                    deviceMeta.regions.put(model, regionSet);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
             });
         } catch (Exception e) {
             e.printStackTrace();
