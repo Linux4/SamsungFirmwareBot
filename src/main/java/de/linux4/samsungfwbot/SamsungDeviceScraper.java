@@ -20,7 +20,8 @@ import org.jsoup.nodes.Document;
 import org.jsoup.select.Elements;
 
 public class SamsungDeviceScraper {
-    private static class DeviceMeta {
+    protected static class DeviceMeta {
+        int id = -1;
         String name = null;
         String url = null;
         String imgURL = null;
