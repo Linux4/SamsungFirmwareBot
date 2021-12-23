@@ -83,6 +83,8 @@ public class SamsungDeviceScraper {
             // if ((model.endsWith("V") || model.endsWith("U"))
             // && set.contains(model.substring(0, model.length() - 1).concat("U1")))
             // removeModels.add(model);
+            if (model.contains(" "))
+                removeModels.add(model);
             if (!model.startsWith("SM-"))
                 removeModels.add(model);
         }

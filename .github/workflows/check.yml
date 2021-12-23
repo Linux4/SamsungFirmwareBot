@@ -4,10 +4,12 @@ on:
   schedule:
     - cron: '0 * * * *'
   push:
+    branches:
+      - 'master'
   workflow_dispatch:
 
 concurrency: 
-  group: ci-${{ github.ref }}
+  group: tracker
   cancel-in-progress: false
 
 jobs:
@@ -22,41 +24,42 @@ jobs:
 
     - name: Install dependencies
       run: |
-       git pull origin ${{github.ref}} --ff-only
-       sudo sh -c 'echo "deb http://de.archive.ubuntu.com/ubuntu hirsute main restricted universe multiverse" >> /etc/apt/sources.list'
-       sudo apt-get update
-       sudo apt-get install -y build-essential cmake maven openjdk-17-jdk-headless screen
-       sudo apt-get purge -y adoptopenjdk-*
-       JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
-       mvn clean package
+        git pull origin ${{github.ref}} --ff-only
+        sudo sh -c 'echo "deb http://de.archive.ubuntu.com/ubuntu hirsute main restricted universe multiverse" >> /etc/apt/sources.list'
+        sudo apt-get update
+        sudo apt-get install -y build-essential cmake maven openjdk-17-jdk-headless screen
+        sudo apt-get purge -y adoptopenjdk-*
+        JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+        mvn clean package
 
     - name: Start local bot API server
       env:
        API_ID: ${{ secrets.API_ID }}
        API_HASH: ${{ secrets.API_HASH }}
       run: |
-       screen -dmS telegram-bot-api ./prebuilts/bin/telegram-bot-api --api-id=$API_ID --api-hash=$API_HASH --local --http-port=8082
+        screen -dmS telegram-bot-api ./prebuilts/bin/telegram-bot-api --api-id=$API_ID --api-hash=$API_HASH --local --http-port=8082
 
     - name: Run bot
       env:
        BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
       run: |
-       java -jar target/SamsungFirmwareBot.jar samsungfirmware_bot $BOT_TOKEN @samsungfw_tracker @samsungkernel_tracker oneshot
+        java -jar target/SamsungFirmwareBot.jar samsungfirmware_bot $BOT_TOKEN @samsungfw_tracker @samsungkernel_tracker oneshot
 
     - name: Kill local bot API server
       run: |
-       killall telegram-bot-api
+        killall telegram-bot-api
 
     - name: Update databases
       run: |
-       git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
-       git config --local user.name "github-actions[bot]"
-       git pull origin ${{github.ref}} --ff-only
-       git add *.db
-       git commit -m "samsungfwbot: $(date)" || true
+        git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git config --local user.name "github-actions[bot]"
+        git pull origin ${{github.ref}} --ff-only
+        git add *.db
+        git commit -m "samsungfwbot: $(date)" || true
 
     - name: Push changes to repo
       uses: ad-m/github-push-action@master
       with:
         tags: true
+        branch: ${{ github.ref }}
         github_token: ${{ secrets.GITHUB_TOKEN }}
