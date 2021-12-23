@@ -231,7 +231,7 @@ public class SamsungFWBot extends TelegramLongPollingBot {
                 SamsungKernelInfo info = SamsungKernelInfo.fetchLatest(kernelModel);
 
                 if (info != null) {
-                    if (info.isNewerThan(kernelDb.getPDA(kernelModel))) {
+                    if (info.isNewerThan(kernelDb.getPDA(kernelModel)) && false) {
                         // Prevent duplicate DL
                         String oldPDA = kernelDb.getPDA(kernelModel);
                         kernelDb.setPDA(kernelModel, info.getPDA());
