@@ -149,19 +149,17 @@ public class SamsungFWBot extends TelegramLongPollingBot {
         List<Thread> threads = new LinkedList<>();
 
         for (String model : deviceDb.getAllModels()) {
-            String fwModel = model.contains(":") ? model.split(":")[0] : model;
-            String kernelModel = model.contains(":") ? model.split(":")[1] : model;
-            System.out.println("Processing model " + fwModel);
+            System.out.println("Processing model " + model);
             boolean found = false;
 
             for (String region : deviceDb.getRegionsByModel(model)) {
-                SamsungFWInfo info = SamsungFWInfo.fetchLatest(fwModel, region);
+                SamsungFWInfo info = SamsungFWInfo.fetchLatest(model, region);
 
                 if (info != null) {
-                    System.out.printf("Found firmware %s/%s for model %s%n", info.getPDA(), region, fwModel);
+                    System.out.printf("Found firmware %s/%s for model %s%n", info.getPDA(), region, model);
                     found = true;
 
-                    if (info.isNewerThan(db.getPDA(fwModel))) {
+                    if (info.isNewerThan(db.getPDA(model))) {
                         InlineKeyboardMarkup.InlineKeyboardMarkupBuilder keyboardBuilder = InlineKeyboardMarkup
                                 .builder().keyboardRow(
                                         List.of(InlineKeyboardButton.builder().text("Download")
@@ -188,23 +186,23 @@ public class SamsungFWBot extends TelegramLongPollingBot {
                                 info.getChangelog()),
                                 keyboard));
 
-                        db.setPDA(fwModel, info.getPDA());
+                        db.setPDA(model, info.getPDA());
                     }
                 }
             }
 
             if (!found) {
-                System.err.println("ERROR: Firmware for " + fwModel + " not found in regions "
+                System.err.println("ERROR: Firmware for " + model + " not found in regions "
                         + deviceDb.getRegionsByModel(model));
             }
 
-            SamsungKernelInfo info = SamsungKernelInfo.fetchLatest(kernelModel);
+            SamsungKernelInfo info = SamsungKernelInfo.fetchLatest(model);
 
             if (info != null) {
-                if (info.isNewerThan(kernelDb.getPDA(kernelModel))) {
+                if (info.isNewerThan(kernelDb.getPDA(model))) {
                     Thread thread = new Thread(() -> {
                         try {
-                            System.out.println("Downloading kernel source for " + kernelModel);
+                            System.out.println("Downloading kernel source for " + model);
                             File result = info.download(new File("/tmp"));
 
                             if (result != null) {
@@ -219,7 +217,7 @@ public class SamsungFWBot extends TelegramLongPollingBot {
                                                 ? String.format("This is a patch over %s\s", info.getPatchKernel())
                                                 : ""),
                                         result));
-                                kernelDb.setPDA(kernelModel, info.getPDA());
+                                kernelDb.setPDA(model, info.getPDA());
                             } else {
                                 System.err.println("ERROR: Failed to download " + info);
                             }
