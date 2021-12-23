@@ -25,10 +25,13 @@ jobs:
     - name: Install dependencies
       run: |
         git pull origin ${{github.ref}} --ff-only
+        sudo apt purge -y adoptopenjdk-*
         sudo sh -c 'echo "deb http://de.archive.ubuntu.com/ubuntu hirsute main restricted universe multiverse" >> /etc/apt/sources.list'
-        sudo apt-get update
-        sudo apt-get install -y build-essential cmake maven openjdk-17-jdk-headless screen
-        sudo apt-get purge -y adoptopenjdk-*
+        sudo apt update
+        sudo apt install -y build-essential cmake maven openjdk-17-jdk-headless screen
+      
+    - name: Build
+      run: |
         JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
         mvn clean package
 
@@ -43,7 +46,7 @@ jobs:
       env:
        BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
       run: |
-        java -jar target/SamsungFirmwareBot.jar samsungfirmware_bot $BOT_TOKEN @samsungfw_tracker @samsungkernel_tracker oneshot
+        java -jar target/SamsungFirmwareBot.jar samsungfirmware_bot $BOT_TOKEN @samsungfw_tracker @samsungkernel_tracker
 
     - name: Kill local bot API server
       run: |

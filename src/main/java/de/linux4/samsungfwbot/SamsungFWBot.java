@@ -38,7 +38,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 public class SamsungFWBot extends TelegramLongPollingBot {
 
     public static void main(String[] args) {
-        if (args.length != 4 && args.length != 5) {
+        if (args.length != 4) {
             if (args.length == 1 && args[0].equalsIgnoreCase("scrapeDevices")) {
                 try {
                     SamsungDeviceScraper.main(args);
@@ -47,16 +47,15 @@ public class SamsungFWBot extends TelegramLongPollingBot {
                 return;
             }
             // channels can be id or @channelname
-            System.out.println("Usage: java -jar samsungfwbot.jar <bot name> <bot token> <firmware channel> <kernel channel> [oneshot]");
+            System.out.println(
+                    "Usage: java -jar samsungfwbot.jar <bot name> <bot token> <firmware channel> <kernel channel>");
             System.out.println("Usage: java -jar samsungfwbot.jar scrapeDevices");
             return;
         }
 
-        boolean oneshot = args.length == 5 && args[4].equalsIgnoreCase("oneshot");
-
         try {
             TelegramBotsApi botApi = new TelegramBotsApi(DefaultBotSession.class);
-            botApi.registerBot(new SamsungFWBot(args[0], args[1], args[2], args[3], oneshot));
+            botApi.registerBot(new SamsungFWBot(args[0], args[1], args[2], args[3]));
         } catch (TelegramApiException | IOException | ParseException ex) {
             ex.printStackTrace();
         }
@@ -75,7 +74,8 @@ public class SamsungFWBot extends TelegramLongPollingBot {
     private boolean checksFinished = false;
     private final ConcurrentLinkedQueue<TelegramMessage> messageQueue = new ConcurrentLinkedQueue<>();
 
-    public SamsungFWBot(String botName, String token, String channelFw, String channelKernel, boolean oneshot) throws TelegramApiException, IOException, ParseException {
+    public SamsungFWBot(String botName, String token, String channelFw, String channelKernel)
+            throws TelegramApiException, IOException, ParseException {
         super(new DefaultBotOptions() {
             @Override
             public String getBaseUrl() {
@@ -143,126 +143,121 @@ public class SamsungFWBot extends TelegramLongPollingBot {
             }
             System.out.println("Upload thread end");
 
-            if (oneshot)
-                System.exit(0);
+            System.exit(0);
         }).start();
 
         List<Thread> threads = new LinkedList<>();
 
-        do {
-            for (String model : deviceDb.getAllModels()) {
-                String fwModel = model.contains(":") ? model.split(":")[0] : model;
-                String kernelModel = model.contains(":") ? model.split(":")[1] : model;
-                System.out.println("Processing model " + fwModel);
-                boolean found = false;
+        for (String model : deviceDb.getAllModels()) {
+            String fwModel = model.contains(":") ? model.split(":")[0] : model;
+            String kernelModel = model.contains(":") ? model.split(":")[1] : model;
+            System.out.println("Processing model " + fwModel);
+            boolean found = false;
 
-                for (String region : deviceDb.getRegionsByModel(model)) {
-                    SamsungFWInfo info = SamsungFWInfo.fetchLatest(fwModel, region);
-
-                    if (info != null) {
-                        System.out.printf("Found firmware %s/%s for model %s%n", info.getPDA(), region, fwModel);
-                        found = true;
-
-                        if (info.isNewerThan(db.getPDA(fwModel))) {
-                            InlineKeyboardMarkup.InlineKeyboardMarkupBuilder keyboardBuilder =
-                                    InlineKeyboardMarkup.builder().keyboardRow(
-                                            List.of(InlineKeyboardButton.builder().text("Download")
-                                                    .url(info.getDownloadURL()).build()));
-                            InlineKeyboardMarkup keyboard = keyboardBuilder.build();
-
-                            messageQueue.add(new TelegramMessage(channelFw, String.format("""
-                                            New firmware update available\s
-                                            \s
-                                            Device: %s\s
-                                            Model: %s\s
-                                            OS Version: %s\s
-                                            PDA Version: %s\s
-                                            Release Date: %s\s
-                                            Security Patch Level: %s\s
-
-                                            Changelog: \s
-                                            %s\s
-                                            """,
-                                    info.getDeviceName(), info.getModel(), info.getOSVersion(), info.getPDA(),
-                                    SamsungFWInfo.DATE_FORMAT.format(info.getBuildDate()), SamsungFWInfo.DATE_FORMAT.format(info.getSecurityPatch()),
-                                    info.getChangelog()),
-                                    keyboard));
-
-                            db.setPDA(fwModel, info.getPDA());
-                        }
-                    }
-                }
-
-                if (!found) {
-                    System.err.println("ERROR: Firmware for " + fwModel + " not found in regions "
-                            + deviceDb.getRegionsByModel(model));
-                }
-
-                SamsungKernelInfo info = SamsungKernelInfo.fetchLatest(kernelModel);
+            for (String region : deviceDb.getRegionsByModel(model)) {
+                SamsungFWInfo info = SamsungFWInfo.fetchLatest(fwModel, region);
 
                 if (info != null) {
-                    if (info.isNewerThan(kernelDb.getPDA(kernelModel))) {
-                        Thread thread = new Thread(() -> {
-                            try {
-                                System.out.println("Downloading kernel source for " + kernelModel);
-                                File result = info.download(new File("/tmp"));
+                    System.out.printf("Found firmware %s/%s for model %s%n", info.getPDA(), region, fwModel);
+                    found = true;
 
-                                if (result != null) {
-                                    messageQueue.add(new TelegramMessage(channelKernel, String.format("""
-                                                    New kernel sources available!\s
-                                                    Model: %s\s
-                                                    PDA Version: %s\s
-                                                    %s
-                                                    """,
-                                            info.getModel(), info.getPDA(), info.getPatchKernel() != null ?
-                                                    String.format("This is a patch over %s\s", info.getPatchKernel()) : ""),
-                                            result));
-                                    kernelDb.setPDA(kernelModel, info.getPDA());
-                                } else {
-                                    System.err.println("ERROR: Failed to download " + info);
-                                }
-                            } catch (IOException ex) {
-                                ex.printStackTrace();
-                            }
-                        });
-                        thread.start();
-                        threads.add(thread);
+                    if (info.isNewerThan(db.getPDA(fwModel))) {
+                        InlineKeyboardMarkup.InlineKeyboardMarkupBuilder keyboardBuilder = InlineKeyboardMarkup
+                                .builder().keyboardRow(
+                                        List.of(InlineKeyboardButton.builder().text("Download")
+                                                .url(info.getDownloadURL()).build()));
+                        InlineKeyboardMarkup keyboard = keyboardBuilder.build();
+
+                        messageQueue.add(new TelegramMessage(channelFw, String.format(
+                                """
+                                        New firmware update available\s
+                                        \s
+                                        Device: %s\s
+                                        Model: %s\s
+                                        OS Version: %s\s
+                                        PDA Version: %s\s
+                                        Release Date: %s\s
+                                        Security Patch Level: %s\s
+
+                                Changelog: \s
+                                %s\s
+                                """,
+                                info.getDeviceName(), info.getModel(), info.getOSVersion(), info.getPDA(),
+                                SamsungFWInfo.DATE_FORMAT.format(info.getBuildDate()),
+                                SamsungFWInfo.DATE_FORMAT.format(info.getSecurityPatch()),
+                                info.getChangelog()),
+                                keyboard));
+
+                        db.setPDA(fwModel, info.getPDA());
                     }
-                } else {
-                    System.err.println("ERROR: Model " + model + " does not have any kernel source available!");
                 }
             }
 
-            try {
-                SetChatDescription sdesc = new SetChatDescription();
-                sdesc.setDescription("Last updated: " + new Date(System.currentTimeMillis()));
-                sdesc.setChatId(channelFw);
+            if (!found) {
+                System.err.println("ERROR: Firmware for " + fwModel + " not found in regions "
+                        + deviceDb.getRegionsByModel(model));
+            }
+
+            SamsungKernelInfo info = SamsungKernelInfo.fetchLatest(kernelModel);
+
+            if (info != null) {
+                if (info.isNewerThan(kernelDb.getPDA(kernelModel))) {
+                    Thread thread = new Thread(() -> {
+                        try {
+                            System.out.println("Downloading kernel source for " + kernelModel);
+                            File result = info.download(new File("/tmp"));
+
+                            if (result != null) {
+                                messageQueue.add(new TelegramMessage(channelKernel, String.format("""
+                                        New kernel sources available!\s
+                                        Model: %s\s
+                                        PDA Version: %s\s
+                                        %s
+                                        """,
+                                        info.getModel(), info.getPDA(),
+                                        info.getPatchKernel() != null
+                                                ? String.format("This is a patch over %s\s", info.getPatchKernel())
+                                                : ""),
+                                        result));
+                                kernelDb.setPDA(kernelModel, info.getPDA());
+                            } else {
+                                System.err.println("ERROR: Failed to download " + info);
+                            }
+                        } catch (IOException ex) {
+                            ex.printStackTrace();
+                        }
+                    });
+                    thread.start();
+                    threads.add(thread);
+                }
+            } else {
+                System.err.println("ERROR: Model " + model + " does not have any kernel source available!");
+            }
+        }
+
+        try {
+            SetChatDescription sdesc = new SetChatDescription();
+            sdesc.setDescription("Last updated: " + new Date(System.currentTimeMillis()));
+            sdesc.setChatId(channelFw);
+            execute(sdesc);
+            if (channelFw != channelKernel) {
+                sdesc.setChatId(channelKernel);
                 execute(sdesc);
-                if (channelFw != channelKernel) {
-                    sdesc.setChatId(channelKernel);
-                    execute(sdesc);
-                }
-            } catch (Exception ignored) {
             }
+        } catch (Exception ignored) {
+        }
 
-            if (!oneshot) {
-                try {
-                    Thread.sleep(60 * 60 * 1000); // 1h
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
+        int activeThreadsCount;
+        do {
+            activeThreadsCount = 0;
+            for (Thread t : threads) {
+                if (t.isAlive())
+                    activeThreadsCount++;
             }
-            int activeThreadsCount;
-            do {
-                activeThreadsCount = 0;
-                for (Thread t : threads) {
-                    if (t.isAlive()) activeThreadsCount++;
-                }
-                System.out.println("Still active Threads: " + activeThreadsCount);
-                sleep();
-            } while (activeThreadsCount > 0);
-            threads.clear();
-        } while (!oneshot);
+            System.out.println("Still active Threads: " + activeThreadsCount);
+            sleep();
+        } while (activeThreadsCount > 0);
+        threads.clear();
 
         checksFinished = true;
         System.out.println("Checks finished");

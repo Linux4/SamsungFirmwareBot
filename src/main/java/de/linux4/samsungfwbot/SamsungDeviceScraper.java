@@ -1,9 +1,6 @@
 package de.linux4.samsungfwbot;
 
-import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -159,6 +156,7 @@ public class SamsungDeviceScraper {
     }
 
     public static void main(String[] args) throws IOException {
+
         Document doc = request(String.format(DEVICES_LIST_URL, 1));
         int pagesCount = Integer.parseInt(
                 doc.select("#body > div > div.review-nav.pullNeg.col.pushT10 > div.nav-pages > a").last().text());

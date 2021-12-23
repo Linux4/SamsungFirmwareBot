@@ -36,8 +36,6 @@ jobs:
         mvn clean package
 
     - name: Run bot
-      env:
-       BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
       run: |
         java -jar target/SamsungFirmwareBot.jar scrapeDevices
 
