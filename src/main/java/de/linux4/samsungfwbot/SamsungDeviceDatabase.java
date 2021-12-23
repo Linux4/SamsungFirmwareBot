@@ -21,9 +21,11 @@ import java.util.*;
 
 public class SamsungDeviceDatabase {
 
+    private static final String file = "devices.db";
+
     private Connection conn = null;
 
-    public SamsungDeviceDatabase(String file) {
+    public SamsungDeviceDatabase() {
         try {
             conn = DriverManager.getConnection("jdbc:sqlite:" + file);
 

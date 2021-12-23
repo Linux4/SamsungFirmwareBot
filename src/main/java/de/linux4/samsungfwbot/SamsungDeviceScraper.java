@@ -35,7 +35,6 @@ public class SamsungDeviceScraper {
     private static final String SAMFW_BASE_URL = "https://samfw.com/";
     private static final String DEVICES_LIST_URL = GSMARENA_BASE_URL + "samsung-phones-f-9-0-p%d.php";
     private static final String REGIONS_URL = SAMFW_BASE_URL + "firmware/%s";
-    private static final String MODELS_FILE_NAME = "devices.txt";
     private static final int FETCH_TIMEOUT = 1 * 60 * 1000;
     private static final int FETCH_INTERVAL = 3 * 1000;
 
@@ -172,28 +171,21 @@ public class SamsungDeviceScraper {
         for (int i = 0; i < devices.size(); i++) {
             DeviceMeta device = devices.get(i);
             System.out.println(String.format("Fetching device details for %s (%d/%d)", device.name,
-                    i, devices.size()));
+                    i + 1, devices.size()));
             fillDetails(device);
         }
         devices = devices.stream().filter(SamsungDeviceScraper::isDeviceRelevant).toList();
         System.out.println("Filtered Devices (Stage 2) = " + devices.size());
         devices = devices.stream().sorted((x, y) -> getModelSupername(x).compareTo(getModelSupername(y))).toList();
         try {
-            writeModelsToFile(devices);
+            saveDevicesToDb(devices);
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    private static void writeModelsToFile(List<DeviceMeta> devices) throws IOException {
-        File file = new File(MODELS_FILE_NAME);
-        if (file.exists())
-            file.delete();
-        file.createNewFile();
-        PrintWriter writer = new PrintWriter(new FileWriter(file));
-        devices.forEach(device -> {
-            getNormalizedModels(device).stream().sorted().forEach(model -> writer.println(model));
-        });
-        writer.close();
+    private static void saveDevicesToDb(List<DeviceMeta> devices) {
+        SamsungDeviceDatabase database = new SamsungDeviceDatabase();
+        devices.forEach(device -> database.save(device));
     }
 }
