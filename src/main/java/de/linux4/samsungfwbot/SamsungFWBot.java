@@ -151,7 +151,10 @@ public class SamsungFWBot extends TelegramLongPollingBot {
                     } else {
                         SendMessage sm = new SendMessage();
                         sm.setChatId(message.getChannelId());
-                        sm.setText(message.getText());
+                        String text = message.getText();
+                        System.out.println("Message length = " + text.length());
+                        text = text.substring(0, Math.min(text.length(), 4096));
+                        sm.setText(text);
 
                         if (message.getKeyboard() != null)
                             sm.setReplyMarkup(message.getKeyboard());
