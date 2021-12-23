@@ -4,7 +4,6 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -60,6 +59,8 @@ public class SamsungDeviceScraper {
                 DeviceMeta deviceMeta = new DeviceMeta();
                 deviceMeta.name = element.select("a > strong > span").first().text();
                 deviceMeta.url = element.select("a").first().attributes().get("href");
+                deviceMeta.id = Integer.parseInt(deviceMeta.url.substring(deviceMeta.url.lastIndexOf("-") + 1,
+                        deviceMeta.url.lastIndexOf(".php")));
                 deviceMeta.imgURL = element.select("a > img").first().attributes().get("src");
                 deviceMeta.shortDescription = element.select("a > img").first().attributes().get("title");
                 return deviceMeta;
