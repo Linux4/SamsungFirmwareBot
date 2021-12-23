@@ -156,7 +156,6 @@ public class SamsungDeviceScraper {
     }
 
     public static void main(String[] args) throws IOException {
-
         Document doc = request(String.format(DEVICES_LIST_URL, 1));
         int pagesCount = Integer.parseInt(
                 doc.select("#body > div > div.review-nav.pullNeg.col.pushT10 > div.nav-pages > a").last().text());

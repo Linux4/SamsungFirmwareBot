@@ -87,6 +87,8 @@ public class SamsungFWInfo {
     }
 
     public String getChangelog() {
+        if (changelog.length() > 1024)
+            return "The changelog is too large to display here.";
         return changelog;
     }
 

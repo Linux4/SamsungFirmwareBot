@@ -148,6 +148,8 @@ public class SamsungFWBot extends TelegramLongPollingBot {
 
         List<Thread> threads = new LinkedList<>();
 
+        System.out.println("Devices = " + deviceDb.getAllModels());
+
         for (String model : deviceDb.getAllModels()) {
             System.out.println("Processing model " + model);
             boolean found = false;
@@ -208,8 +210,8 @@ public class SamsungFWBot extends TelegramLongPollingBot {
                             if (result != null) {
                                 messageQueue.add(new TelegramMessage(channelKernel, String.format("""
                                         New kernel sources available!\s
-                                        Model: %s\s
-                                        PDA Version: %s\s
+                                            Model: %s\s
+                                            PDA Version: %s\s
                                         %s
                                         """,
                                         info.getModel(), info.getPDA(),
