@@ -14,7 +14,7 @@
   You should have received a copy of the GNU General Public License
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-package de.linux4.samsungfwbot;
+package de.linux4.samsungfwbot.kernel;
 
 import org.apache.commons.io.FileUtils;
 import org.jsoup.Connection;
@@ -42,7 +42,7 @@ public class SamsungKernelInfo {
     private final String uploadId;
     private final String patchKernel;
 
-    public SamsungKernelInfo(String model, String pda, String uploadId, String patchKernel) {
+    SamsungKernelInfo(String model, String pda, String uploadId, String patchKernel) {
         this.model = model;
         this.pda = pda;
         this.uploadId = uploadId;

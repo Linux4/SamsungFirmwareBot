@@ -16,6 +16,7 @@
  */
 package de.linux4.samsungfwbot;
 
+import de.linux4.samsungfwbot.kernel.SamsungKernelInfo;
 import org.telegram.telegrambots.bots.DefaultBotOptions;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.TelegramBotsApi;
@@ -36,6 +37,8 @@ import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class SamsungFWBot extends TelegramLongPollingBot {
+
+    public static final String REPO_URL = "https://github.com/Linux4/SamsungFirmwareBot";
 
     public static void main(String[] args) {
         if (args.length != 4) {
