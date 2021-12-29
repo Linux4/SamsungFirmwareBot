@@ -143,7 +143,8 @@ public class SamsungFWBot extends TelegramLongPollingBot {
                     } else {
                         SendMessage sm = new SendMessage();
                         sm.setChatId(message.getChannelId());
-                        sm.setText(message.getText());
+                        // Telegram message length limit: 4096
+                        sm.setText(message.getText().substring(0, Math.min(message.getText().length(), 4096)));
 
                         if (message.getKeyboard() != null)
                             sm.setReplyMarkup(message.getKeyboard());
