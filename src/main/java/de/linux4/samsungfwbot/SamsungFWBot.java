@@ -191,22 +191,15 @@ public class SamsungFWBot extends TelegramLongPollingBot {
                                                     .url(info.getDownloadURL()).build()));
                             InlineKeyboardMarkup keyboard = keyboardBuilder.build();
 
-                            messageQueue.add(new TelegramMessage(channelFw, String.format("""
-                                            New firmware update available\s
-                                            \s
-                                            Device: %s\s
-                                            Model: %s\s
-                                            OS Version: %s\s
-                                            PDA Version: %s\s
-                                            Release Date: %s\s
-                                            Security Patch Level: %s\s
-
-                                            Changelog: \s
-                                            %s\s
-                                            """,
-                                    info.getDeviceName(), info.getModel(), info.getOSVersion(), info.getPDA(),
-                                    SamsungFWInfo.DATE_FORMAT.format(info.getBuildDate()), SamsungFWInfo.DATE_FORMAT.format(info.getSecurityPatch()),
-                                    info.getChangelog()),
+                            messageQueue.add(new TelegramMessage(channelFw, "New firmware update available \n \n"
+                                    + "Device: " + info.getDeviceName() + " \n"
+                                    + "Model: " + info.getModel() + " \n"
+                                    + "OS Version: " + info.getOSVersion() + " \n"
+                                    + "PDA Version: " + info.getPDA() + " \n"
+                                    + "Release Date: " + SamsungFWInfo.DATE_FORMAT.format(info.getBuildDate()) + " \n"
+                                    + "Security Patch Level: " + SamsungFWInfo.DATE_FORMAT.format(info.getSecurityPatch()) + " \n\n"
+                                    + "Changelog:  \n"
+                                    + info.getChangelog() + " \n",
                                     keyboard));
 
                             db.setPDA(fwModel, info.getPDA());
@@ -232,14 +225,10 @@ public class SamsungFWBot extends TelegramLongPollingBot {
                                 File result = info.download(new File("/tmp"));
 
                                 if (result != null) {
-                                    messageQueue.add(new TelegramMessage(channelKernel, String.format("""
-                                                    New kernel sources available!\s
-                                                    Model: %s\s
-                                                    PDA Version: %s\s
-                                                    %s
-                                                    """,
-                                            info.getModel(), info.getPDA(), info.getPatchKernel() != null ?
-                                                    String.format("This is a patch over %s\s", info.getPatchKernel()) : ""),
+                                    messageQueue.add(new TelegramMessage(channelKernel, "New kernel sources available! \n"
+                                            + "Model: " + info.getModel() + " \n"
+                                            + "PDA Version: " + info.getPDA() + " \n"
+                                            + (info.getPatchKernel() != null ? "This is a patch over " + info.getPatchKernel() + " " : "") + "\n",
                                             result));
                                 } else {
                                     System.err.println("ERROR: Failed to download " + info);
