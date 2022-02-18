@@ -66,14 +66,17 @@ public class SamsungKernelInfo {
         return patchKernel;
     }
 
-    private static int getPDAVersion(String pda) {
-        int version = 0;
+    // Android version
+    private static int getMajorVersion(String pda) {
+        return pda.charAt(pda.length() - 4);
+    }
 
-        for (int i = pda.length() - 4; i < pda.length() - 1; i++) {
-            version += pda.charAt(i);
-        }
+    private static int getBuildDate1(String pda) {
+        return pda.charAt(pda.length() - 3);
+    }
 
-        return version;
+    private static int getBuildDate2(String pda) {
+        return pda.charAt(pda.length() - 2);
     }
 
     private static int getMinorVersion(String pda) {
@@ -81,8 +84,23 @@ public class SamsungKernelInfo {
     }
 
     public boolean isNewerThan(String oldPDA) {
-        return oldPDA.length() < 4 || (pda.length() >= 4 && (getPDAVersion(oldPDA) < getPDAVersion(pda)
-                || (getPDAVersion(oldPDA) == getPDAVersion(pda) && getMinorVersion(oldPDA) < getMinorVersion(pda))));
+        if (oldPDA.length() < 4) return true;
+        if (pda.length() < 4) return false;
+
+        if (getMajorVersion(pda) > getMajorVersion(oldPDA)) return true;
+        if (getMajorVersion(pda) == getMajorVersion(oldPDA)) {
+            if (getBuildDate1(pda) > getBuildDate1(oldPDA)) return true;
+
+            if (getBuildDate1(pda) == getBuildDate1(oldPDA)) {
+                if (getBuildDate2(pda) > getBuildDate2(oldPDA)) return true;
+
+                if (getBuildDate2(pda) == getBuildDate2(oldPDA)) {
+                    return getMinorVersion(pda) > getMinorVersion(oldPDA);
+                }
+            }
+        }
+
+        return false;
     }
 
     @Override
