@@ -37,6 +37,11 @@ jobs:
       run: |
        mvn package
 
+    - name: Add missing intermediate certificate for opensource.samsung.com
+      run: |
+       sudo bash -c "curl -s http://crt.sectigo.com/SectigoRSAOrganizationValidationSecureServerCA.crt | openssl x509 -inform DER > /usr/local/share/ca-certificates/SectigoRSAOrganizationValidationSecureServerCA.crt"
+       sudo update-ca-certificates
+
     - name: Run bot
       env:
        BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
