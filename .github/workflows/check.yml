@@ -6,7 +6,7 @@ on:
   push:
   workflow_dispatch:
 
-concurrency: 
+concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: false
 
@@ -41,6 +41,7 @@ jobs:
     - name: Run bot
       env:
        BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+       GH_TOKEN: ${{ secrets.GH_TOKEN }}
       run: |
        java -jar target/SamsungFirmwareBot.jar samsungfirmware_bot $BOT_TOKEN @samsungfw_tracker @samsungkernel_tracker oneshot
 

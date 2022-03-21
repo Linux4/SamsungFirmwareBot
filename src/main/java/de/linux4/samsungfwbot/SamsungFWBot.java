@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021  Tim Zimmermann <tim@linux4.de>
+  Copyright (C) 2021-2022  Tim Zimmermann <tim@linux4.de>
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as
@@ -16,6 +16,16 @@
  */
 package de.linux4.samsungfwbot;
 
+import org.apache.commons.io.FileUtils;
+import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.api.PushCommand;
+import org.eclipse.jgit.api.errors.GitAPIException;
+import org.eclipse.jgit.api.errors.RefNotFoundException;
+import org.eclipse.jgit.transport.RefSpec;
+import org.eclipse.jgit.transport.URIish;
+import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
+import org.rauschig.jarchivelib.Archiver;
+import org.rauschig.jarchivelib.ArchiverFactory;
 import org.telegram.telegrambots.bots.DefaultBotOptions;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.TelegramBotsApi;
@@ -33,14 +43,19 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.text.ParseException;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
 
 public class SamsungFWBot extends TelegramLongPollingBot {
 
     public static final HashMap<String, String> KNOWN_REGIONS = new HashMap<>();
     public static final List<String> KNOWN_MODELS = new ArrayList<>();
+    public static final String KERNEL_REPO_URL = "https://github.com/Linux4/samsung_kernel";
+    public static final String GH_USER = "Linux4";
 
     public static void main(String[] args) {
         if (args.length != 4 && args.length != 5) {
@@ -225,16 +240,64 @@ public class SamsungFWBot extends TelegramLongPollingBot {
                                 File result = info.download(new File("/tmp"));
 
                                 if (result != null) {
+                                    System.out.println("Uploading kernel source for " + kernelModel);
+                                    ZipFile zipFile = new ZipFile(result);
+                                    File tmpDir = new File("/tmp/samsung_kernel_" + kernelModel);
+                                    FileUtils.deleteDirectory(tmpDir);
+                                    tmpDir.mkdir();
+                                    Git git = Git.init().setDirectory(tmpDir).call();
+                                    git.remoteAdd().setName("origin").setUri(new URIish(KERNEL_REPO_URL)).call();
+                                    try {
+                                        git.checkout().setName("origin/" + kernelModel).call();
+                                    } catch (RefNotFoundException ignored) {
+
+                                    }
+
+                                    if (info.getPatchKernel() != null) {
+                                        Enumeration<? extends ZipEntry> entries = zipFile.entries();
+                                        for (ZipEntry entry = entries.nextElement(); entries.hasMoreElements(); entry = entries.nextElement()) {
+                                            if (entry.getName().startsWith("Kernel/")) {
+                                                File output = new File(tmpDir, entry.getName().substring("Kernel/".length()));
+                                                FileUtils.copyInputStreamToFile(zipFile.getInputStream(entry), output);
+                                            }
+                                        }
+                                    } else {
+                                        git.rm().addFilepattern("*").call();
+                                        ZipEntry kernel = zipFile.getEntry("Kernel.tar.gz");
+                                        File kernelTar = new File("/tmp/Kernel-" + info.getPDA() + ".tar.gz");
+                                        FileUtils.copyInputStreamToFile(zipFile.getInputStream(kernel), kernelTar);
+
+                                        Archiver archiver = ArchiverFactory.createArchiver("tar", "gz");
+                                        archiver.extract(kernelTar, tmpDir);
+                                        kernelTar.delete();
+                                    }
+                                    zipFile.close();
+
+                                    git.add().addFilepattern(".").call();
+                                    git.commit().setMessage(kernelModel + ": Import " + info.getPDA() + " kernel source")
+                                            .setAuthor("github-actions[bot]", "41898282+github-actions[bot]@users.noreply.github.com").call();
+                                    git.tag().setName(info.getPDA()).call();
+                                    PushCommand push = git.push().setRemote("origin").setRefSpecs(new RefSpec("HEAD:refs/heads/" + kernelModel)).setPushTags();
+                                    push.setCredentialsProvider(new UsernamePasswordCredentialsProvider(GH_USER, System.getenv("GH_TOKEN")));
+                                    push.call();
+                                    FileUtils.deleteDirectory(tmpDir);
+                                    result.delete();
+
+                                    InlineKeyboardMarkup.InlineKeyboardMarkupBuilder keyboardBuilder =
+                                            InlineKeyboardMarkup.builder().keyboardRow(
+                                                    List.of(InlineKeyboardButton.builder().text("View")
+                                                            .url(KERNEL_REPO_URL + "/tree/" + info.getPDA()).build()));
+                                    InlineKeyboardMarkup keyboard = keyboardBuilder.build();
                                     messageQueue.add(new TelegramMessage(channelKernel, "New kernel sources available! \n"
                                             + "Model: " + info.getModel() + " \n"
                                             + "PDA Version: " + info.getPDA() + " \n"
                                             + (info.getPatchKernel() != null ? "This is a patch over " + info.getPatchKernel() + " " : "") + "\n",
-                                            result));
+                                            keyboard));
                                 } else {
                                     System.err.println("ERROR: Failed to download " + info);
                                     kernelDb.setPDA(kernelModel, oldPDA); // retry download
                                 }
-                            } catch (IOException ex) {
+                            } catch (IOException | GitAPIException | URISyntaxException ex) {
                                 ex.printStackTrace();
                             }
                         });
