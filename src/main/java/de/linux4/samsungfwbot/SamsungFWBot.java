@@ -299,6 +299,7 @@ public class SamsungFWBot extends TelegramLongPollingBot {
                                 }
                             } catch (IOException | GitAPIException | URISyntaxException ex) {
                                 ex.printStackTrace();
+                                kernelDb.setPDA(kernelModel, oldPDA); // retry download
                             }
                         });
                         thread.start();
