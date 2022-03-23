@@ -18,32 +18,20 @@ package de.linux4.samsungfwbot;
 
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 
-import java.io.File;
-
 public class TelegramMessage {
 
     private final String channelId;
     private final String text;
-    private final File file;
     private final InlineKeyboardMarkup keyboard;
 
-    private TelegramMessage(String channelId, String text, File file, InlineKeyboardMarkup keyboard) {
+    public TelegramMessage(String channelId, String text, InlineKeyboardMarkup keyboard) {
         this.channelId = channelId;
         this.text = text;
-        this.file = file;
         this.keyboard = keyboard;
     }
 
-    public TelegramMessage(String channelId, String text, File file) {
-        this(channelId, text, file, null);
-    }
-
-    public TelegramMessage(String channelId, String text, InlineKeyboardMarkup keyboard) {
-        this(channelId, text, null, keyboard);
-    }
-
     public TelegramMessage(String channelId, String text) {
-        this(channelId, text, null, null);
+        this(channelId, text, null);
     }
 
     public String getChannelId() {
@@ -52,10 +40,6 @@ public class TelegramMessage {
 
     public String getText() {
         return text;
-    }
-
-    public File getFile() {
-        return file;
     }
 
     public InlineKeyboardMarkup getKeyboard() {

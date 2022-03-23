@@ -30,9 +30,7 @@ import org.telegram.telegrambots.bots.DefaultBotOptions;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.TelegramBotsApi;
 import org.telegram.telegrambots.meta.api.methods.groupadministration.SetChatDescription;
-import org.telegram.telegrambots.meta.api.methods.send.SendDocument;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
-import org.telegram.telegrambots.meta.api.objects.InputFile;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
@@ -123,56 +121,34 @@ public class SamsungFWBot extends TelegramLongPollingBot {
         SamsungFWDatabase kernelDb = new SamsungFWDatabase("samsungkernel.db");
 
         new Thread(() -> {
-            System.out.println("Upload thread start");
+            System.out.println("Message thread start");
             while (!messageQueue.isEmpty() || !checksFinished) {
                 System.out.println("Message Queue Size: " + messageQueue.size() + " checksFinished=" + checksFinished);
                 if (!messageQueue.isEmpty()) {
                     TelegramMessage message = messageQueue.poll();
 
-                    if (message.getFile() != null) {
-                        System.out.println("Uploading " + message.getFile().getName());
+                    SendMessage sm = new SendMessage();
+                    sm.setChatId(message.getChannelId());
+                    //sm.setParseMode("HTML");
+                    // Telegram message length limit: 4096
+                    sm.setText(message.getText().substring(0, Math.min(message.getText().length(), 4096)));
 
-                        SendDocument sd = new SendDocument();
-                        sd.setChatId(message.getChannelId());
-                        sd.setCaption(message.getText());
-                        sd.setDocument(new InputFile(message.getFile()));
+                    if (message.getKeyboard() != null)
+                        sm.setReplyMarkup(message.getKeyboard());
 
-                        for (int i = 0; i < 5; i++) {
-                            try {
-                                execute(sd);
-                                System.out.println("Finished upload of " + message.getFile().getName());
-                                break;
-                            } catch (TelegramApiException e) {
-                                System.err.println("Upload of " + message.getFile().getName() + " failed (" + i + ")");
-                                e.printStackTrace();
-                                sleep();
-                            }
-                        }
-
-                        message.getFile().delete();
-                    } else {
-                        SendMessage sm = new SendMessage();
-                        sm.setChatId(message.getChannelId());
-                        // Telegram message length limit: 4096
-                        sm.setText(message.getText().substring(0, Math.min(message.getText().length(), 4096)));
-
-                        if (message.getKeyboard() != null)
-                            sm.setReplyMarkup(message.getKeyboard());
-
-                        for (int i = 0; i < 5; i++) {
-                            try {
-                                execute(sm);
-                                break;
-                            } catch (TelegramApiException e) {
-                                e.printStackTrace();
-                                sleep();
-                            }
+                    for (int i = 0; i < 5; i++) {
+                        try {
+                            execute(sm);
+                            break;
+                        } catch (TelegramApiException e) {
+                            e.printStackTrace();
+                            sleep();
                         }
                     }
                 }
                 sleep();
             }
-            System.out.println("Upload thread end");
+            System.out.println("Message thread end");
 
             if (oneshot)
                 System.exit(0);
