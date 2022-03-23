@@ -23,7 +23,7 @@ jobs:
     - name: Install dependencies
       run: |
        git pull origin ${{github.ref}} --ff-only
-       sudo apt-get install -y build-essential cmake maven screen
+       sudo apt-get install -y maven
        mvn clean package
 
     - name: Add missing intermediate certificate for opensource.samsung.com
@@ -31,23 +31,12 @@ jobs:
        sudo bash -c "curl -s http://crt.sectigo.com/SectigoRSAOrganizationValidationSecureServerCA.crt | openssl x509 -inform DER > /usr/local/share/ca-certificates/SectigoRSAOrganizationValidationSecureServerCA.crt"
        sudo update-ca-certificates
 
-    - name: Start local bot API server
-      env:
-       API_ID: ${{ secrets.API_ID }}
-       API_HASH: ${{ secrets.API_HASH }}
-      run: |
-       screen -dmS telegram-bot-api ./prebuilts/bin/telegram-bot-api --api-id=$API_ID --api-hash=$API_HASH --local --http-port=8082
-
     - name: Run bot
       env:
        BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
        GH_TOKEN: ${{ secrets.GH_TOKEN }}
       run: |
        java -jar target/SamsungFirmwareBot.jar samsungfirmware_bot $BOT_TOKEN @samsungfw_tracker @samsungkernel_tracker oneshot
-
-    - name: Kill local bot API server
-      run: |
-       killall telegram-bot-api
 
     - name: Update databases
       run: |

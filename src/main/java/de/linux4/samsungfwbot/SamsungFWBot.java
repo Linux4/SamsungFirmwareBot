@@ -114,12 +114,7 @@ public class SamsungFWBot extends TelegramLongPollingBot {
     private final ConcurrentLinkedQueue<TelegramMessage> messageQueue = new ConcurrentLinkedQueue<>();
 
     public SamsungFWBot(String botName, String token, String channelFw, String channelKernel, boolean oneshot) throws TelegramApiException, IOException, ParseException {
-        super(new DefaultBotOptions() {
-            @Override
-            public String getBaseUrl() {
-                return "http://localhost:8082/bot";
-            }
-        });
+        super(new DefaultBotOptions());
 
         this.botName = botName;
         this.token = token;
