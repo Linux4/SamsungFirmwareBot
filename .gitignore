@@ -1,6 +1,7 @@
 /.idea
 /target
 /bin
+/img
 
 .classpath
 *.binlog
