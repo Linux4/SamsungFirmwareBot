@@ -17,6 +17,7 @@
 package de.linux4.samsungfwbot;
 
 import org.apache.commons.io.FileUtils;
+import org.eclipse.jgit.api.CreateBranchCommand;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.PushCommand;
 import org.eclipse.jgit.api.errors.GitAPIException;
@@ -227,7 +228,11 @@ public class SamsungFWBot extends TelegramLongPollingBot {
                                     Git git = Git.init().setDirectory(tmpDir).call();
                                     git.remoteAdd().setName("origin").setUri(new URIish(KERNEL_REPO_URL)).call();
                                     try {
-                                        git.checkout().setName("origin/" + kernelModel).call();
+                                        git.fetch().setRefSpecs(new RefSpec("refs/heads/" + kernelModel)).call();
+                                        git.checkout().setCreateBranch(true).setName(kernelModel)
+                                                .setUpstreamMode(CreateBranchCommand.SetupUpstreamMode.TRACK)
+                                                .setStartPoint("FETCH_HEAD").call();
+                                        git.pull().call();
                                     } catch (RefNotFoundException ignored) {
 
                                     }
