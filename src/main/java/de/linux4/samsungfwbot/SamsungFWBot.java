@@ -278,7 +278,7 @@ public class SamsungFWBot extends TelegramLongPollingBot {
                                     System.err.println("ERROR: Failed to download " + info);
                                     kernelDb.setPDA(kernelModel, oldPDA); // retry download
                                 }
-                            } catch (IOException | GitAPIException | URISyntaxException ex) {
+                            } catch (Exception ex) {
                                 ex.printStackTrace();
                                 kernelDb.setPDA(kernelModel, oldPDA); // retry download
                             }
