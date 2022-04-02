@@ -214,12 +214,12 @@ public class SamsungFWBot extends TelegramLongPollingBot {
                         Thread thread = new Thread(() -> {
                             try {
                                 System.out.println("Downloading kernel source for " + kernelModel);
-                                File result = info.download(new File("/tmp"));
+                                File result = info.download(new File("."));
 
                                 if (result != null) {
                                     System.out.println("Uploading kernel source for " + kernelModel);
                                     ZipFile zipFile = new ZipFile(result);
-                                    File tmpDir = new File("/tmp/samsung_kernel_" + kernelModel);
+                                    File tmpDir = new File("./samsung_kernel_" + kernelModel);
                                     FileUtils.deleteDirectory(tmpDir);
                                     tmpDir.mkdir();
                                     Git git = Git.init().setDirectory(tmpDir).call();
