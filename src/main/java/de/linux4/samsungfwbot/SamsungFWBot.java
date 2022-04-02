@@ -21,7 +21,6 @@ import org.eclipse.jgit.api.CreateBranchCommand;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.PushCommand;
 import org.eclipse.jgit.api.errors.GitAPIException;
-import org.eclipse.jgit.api.errors.RefNotFoundException;
 import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.URIish;
 import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
@@ -231,7 +230,7 @@ public class SamsungFWBot extends TelegramLongPollingBot {
                                                 .setUpstreamMode(CreateBranchCommand.SetupUpstreamMode.TRACK)
                                                 .setStartPoint("FETCH_HEAD").call();
                                         git.pull().call();
-                                    } catch (RefNotFoundException ignored) {
+                                    } catch (Exception ignored) {
 
                                     }
 
