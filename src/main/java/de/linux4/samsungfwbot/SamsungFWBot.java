@@ -25,8 +25,6 @@ import org.eclipse.jgit.api.errors.RefNotFoundException;
 import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.URIish;
 import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
-import org.rauschig.jarchivelib.Archiver;
-import org.rauschig.jarchivelib.ArchiverFactory;
 import org.telegram.telegrambots.bots.DefaultBotOptions;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.TelegramBotsApi;
@@ -242,6 +240,7 @@ public class SamsungFWBot extends TelegramLongPollingBot {
                                         for (ZipEntry entry = entries.nextElement(); entries.hasMoreElements(); entry = entries.nextElement()) {
                                             if (entry.getName().startsWith("Kernel/")) {
                                                 File output = new File(tmpDir, entry.getName().substring("Kernel/".length()));
+                                                // TODO: This might need to be updated to support symlinks and file permissions as well
                                                 FileUtils.copyInputStreamToFile(zipFile.getInputStream(entry), output);
                                             }
                                         }
@@ -251,8 +250,7 @@ public class SamsungFWBot extends TelegramLongPollingBot {
                                         File kernelTar = new File("/tmp/Kernel-" + info.getPDA() + ".tar.gz");
                                         FileUtils.copyInputStreamToFile(zipFile.getInputStream(kernel), kernelTar);
 
-                                        Archiver archiver = ArchiverFactory.createArchiver("tar", "gz");
-                                        archiver.extract(kernelTar, tmpDir);
+                                        ArchiveUtils.extractTarGz(kernelTar, tmpDir);
                                         kernelTar.delete();
                                     }
                                     zipFile.close();
