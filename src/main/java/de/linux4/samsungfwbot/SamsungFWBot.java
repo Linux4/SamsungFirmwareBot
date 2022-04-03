@@ -21,6 +21,7 @@ import org.eclipse.jgit.api.CreateBranchCommand;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.PushCommand;
 import org.eclipse.jgit.api.errors.GitAPIException;
+import org.eclipse.jgit.api.errors.RefAlreadyExistsException;
 import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.URIish;
 import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
@@ -212,16 +213,17 @@ public class SamsungFWBot extends TelegramLongPollingBot {
                         kernelDb.setPDA(kernelModel, info.getPDA());
 
                         Thread thread = new Thread(() -> {
+                            File result = null, tmpDir = null;
                             try {
                                 System.out.println("Downloading kernel source for " + kernelModel);
-                                File result = info.download(new File("."));
+                                result = info.download(new File("."));
 
                                 if (result != null) {
                                     System.out.println("Uploading kernel source for " + kernelModel);
                                     ZipFile zipFile = new ZipFile(result);
-                                    File tmpDir = new File("./samsung_kernel_" + kernelModel);
+                                    tmpDir = new File("./samsung_kernel_" + kernelModel);
                                     FileUtils.deleteDirectory(tmpDir);
-                                    tmpDir.mkdir();
+                                    if (!tmpDir.mkdir()) System.err.println("Failed to create " + tmpDir);
                                     Git git = Git.init().setDirectory(tmpDir).call();
                                     git.remoteAdd().setName("origin").setUri(new URIish(KERNEL_REPO_URL)).call();
                                     try {
@@ -250,30 +252,35 @@ public class SamsungFWBot extends TelegramLongPollingBot {
                                         FileUtils.copyInputStreamToFile(zipFile.getInputStream(kernel), kernelTar);
 
                                         ArchiveUtils.extractTarGz(kernelTar, tmpDir);
-                                        kernelTar.delete();
+                                        if (!kernelTar.delete()) System.err.println("Failed to delete " + result);
                                     }
                                     zipFile.close();
+                                    if (!result.delete()) System.err.println("Failed to delete " + result);
 
-                                    git.add().addFilepattern(".").call();
-                                    git.commit().setMessage(kernelModel + ": Import " + info.getPDA() + " kernel source")
-                                            .setAuthor("github-actions[bot]", "41898282+github-actions[bot]@users.noreply.github.com").call();
-                                    git.tag().setName(info.getPDA()).call();
-                                    PushCommand push = git.push().setRemote("origin").setRefSpecs(new RefSpec("HEAD:refs/heads/" + kernelModel)).setPushTags();
-                                    push.setCredentialsProvider(new UsernamePasswordCredentialsProvider(GH_USER, System.getenv("GH_TOKEN")));
-                                    push.call();
-                                    FileUtils.deleteDirectory(tmpDir);
-                                    result.delete();
+                                    try {
+                                        git.add().addFilepattern(".").call();
+                                        git.commit().setMessage(kernelModel + ": Import " + info.getPDA() + " kernel source")
+                                                .setAuthor("github-actions[bot]", "41898282+github-actions[bot]@users.noreply.github.com").call();
+                                        git.tag().setName(info.getPDA()).call();
+                                        PushCommand push = git.push().setRemote("origin").setRefSpecs(new RefSpec("HEAD:refs/heads/" + kernelModel)).setPushTags();
+                                        push.setCredentialsProvider(new UsernamePasswordCredentialsProvider(GH_USER, System.getenv("GH_TOKEN")));
+                                        push.call();
 
-                                    InlineKeyboardMarkup.InlineKeyboardMarkupBuilder keyboardBuilder =
-                                            InlineKeyboardMarkup.builder().keyboardRow(
-                                                    List.of(InlineKeyboardButton.builder().text("View")
-                                                            .url(KERNEL_REPO_URL + "/tree/" + info.getPDA()).build()));
-                                    InlineKeyboardMarkup keyboard = keyboardBuilder.build();
-                                    messageQueue.add(new TelegramMessage(channelKernel, "New kernel sources available! \n"
-                                            + "Model: " + info.getModel() + " \n"
-                                            + "PDA Version: " + info.getPDA() + " \n"
-                                            + (info.getPatchKernel() != null ? "This is a patch over " + info.getPatchKernel() + " " : "") + "\n",
-                                            keyboard));
+                                        InlineKeyboardMarkup.InlineKeyboardMarkupBuilder keyboardBuilder =
+                                                InlineKeyboardMarkup.builder().keyboardRow(
+                                                        List.of(InlineKeyboardButton.builder().text("View")
+                                                                .url(KERNEL_REPO_URL + "/tree/" + info.getPDA()).build()));
+                                        InlineKeyboardMarkup keyboard = keyboardBuilder.build();
+                                        messageQueue.add(new TelegramMessage(channelKernel, "New kernel sources available! \n"
+                                                + "Model: " + info.getModel() + " \n"
+                                                + "PDA Version: " + info.getPDA() + " \n"
+                                                + (info.getPatchKernel() != null ? "This is a patch over " + info.getPatchKernel() + " " : "") + "\n",
+                                                keyboard));
+                                    } catch (RefAlreadyExistsException ignored) {
+                                        System.err.println(info.getPDA() + " is already pushed, skipping!");
+                                    } finally {
+                                        FileUtils.deleteDirectory(tmpDir);
+                                    }
                                 } else {
                                     System.err.println("ERROR: Failed to download " + info);
                                     kernelDb.setPDA(kernelModel, oldPDA); // retry download
@@ -281,6 +288,15 @@ public class SamsungFWBot extends TelegramLongPollingBot {
                             } catch (Exception ex) {
                                 ex.printStackTrace();
                                 kernelDb.setPDA(kernelModel, oldPDA); // retry download
+                            } finally {
+                                if (result != null && result.exists()) if (!result.delete()) System.err.println("Failed to delete " + result);
+                                if (tmpDir != null && tmpDir.exists()) {
+                                    try {
+                                        FileUtils.deleteDirectory(tmpDir);
+                                    } catch (IOException e) {
+                                        e.printStackTrace();
+                                    }
+                                }
                             }
                         });
                         thread.start();
