@@ -283,11 +283,13 @@ public class SamsungFWBot extends TelegramLongPollingBot {
                                     }
                                 } else {
                                     System.err.println("ERROR: Failed to download " + info);
-                                    kernelDb.setPDA(kernelModel, oldPDA); // retry download
+                                    if (oldPDA != null && oldPDA.length() > 0)
+                                        kernelDb.setPDA(kernelModel, oldPDA); // retry download
                                 }
                             } catch (Exception ex) {
                                 ex.printStackTrace();
-                                kernelDb.setPDA(kernelModel, oldPDA); // retry download
+                                if (oldPDA != null && oldPDA.length() > 0)
+                                    kernelDb.setPDA(kernelModel, oldPDA); // retry download
                             } finally {
                                 if (result != null && result.exists()) if (!result.delete()) System.err.println("Failed to delete " + result);
                                 if (tmpDir != null && tmpDir.exists()) {
