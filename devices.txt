@@ -1,5 +1,7 @@
 # Firmware Model:Kernel Model
 SM-A037G:SM-A037F
+SM-A336B
+SM-A536B
 SM-G950F
 SM-G955F
 SM-G960F
