@@ -133,7 +133,7 @@ public class SamsungFWInfo {
                 + ", " + DATE_FORMAT.format(securitypatch) + ")";
     }
 
-    public static SamsungFWInfo fetchLatest(String model, String region) throws IOException, ParseException {
+    public static SamsungFWInfo fetchLatest(String model, String region) {
         try {
             Document doc = Jsoup.connect(DOC_BASE_URL + model + "/" + region + DOC_NAME).timeout(10*60*1000).get();
 
@@ -171,8 +171,8 @@ public class SamsungFWInfo {
                     }
                 }
             }
-        } catch (HttpStatusException ignored) {
-
+        } catch (Exception ex) {
+            ex.printStackTrace();
         }
 
         return null;

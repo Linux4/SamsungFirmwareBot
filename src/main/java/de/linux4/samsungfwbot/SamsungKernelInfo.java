@@ -108,7 +108,7 @@ public class SamsungKernelInfo {
         return "SamsungKernel(" + model + ", " + pda + ", " + uploadId + ", " + patchKernel + ")";
     }
 
-    public static SamsungKernelInfo fetchLatest(String model) throws IOException {
+    public static SamsungKernelInfo fetchLatest(String model) {
         try {
             Document doc = Jsoup.connect(OSS_SEARCH_URL + model).timeout(10 * 60 * 1000).get();
 
@@ -138,8 +138,8 @@ public class SamsungKernelInfo {
 
                 return new SamsungKernelInfo(model, fwVersion, uploadId, null);
             }
-        } catch (HttpStatusException ignored) {
-
+        } catch (Exception ex) {
+            ex.printStackTrace();
         }
 
         return null;
