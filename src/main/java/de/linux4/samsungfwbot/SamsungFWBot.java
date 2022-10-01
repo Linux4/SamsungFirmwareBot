@@ -20,11 +20,13 @@ import org.apache.commons.io.FileUtils;
 import org.eclipse.jgit.api.CreateBranchCommand;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.PushCommand;
-import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.api.errors.RefAlreadyExistsException;
+import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.URIish;
 import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
+import org.eclipse.jgit.treewalk.AbstractTreeIterator;
+import org.eclipse.jgit.treewalk.FileTreeIterator;
 import org.telegram.telegrambots.bots.DefaultBotOptions;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.TelegramBotsApi;
@@ -40,7 +42,6 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
-import java.net.URISyntaxException;
 import java.text.ParseException;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -258,7 +259,7 @@ public class SamsungFWBot extends TelegramLongPollingBot {
                                     if (!result.delete()) System.err.println("Failed to delete " + result);
 
                                     try {
-                                        git.add().addFilepattern(".").call();
+                                        git.add().setWorkingTreeIterator(new ForceAddFileTreeIterator(git.getRepository())).addFilepattern(".").call();
                                         git.commit().setMessage(kernelModel + ": Import " + info.getPDA() + " kernel source")
                                                 .setAuthor("github-actions[bot]", "41898282+github-actions[bot]@users.noreply.github.com").call();
                                         git.tag().setName(info.getPDA()).call();
