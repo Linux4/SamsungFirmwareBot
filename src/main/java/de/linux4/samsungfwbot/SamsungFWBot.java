@@ -21,12 +21,9 @@ import org.eclipse.jgit.api.CreateBranchCommand;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.PushCommand;
 import org.eclipse.jgit.api.errors.RefAlreadyExistsException;
-import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.URIish;
 import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
-import org.eclipse.jgit.treewalk.AbstractTreeIterator;
-import org.eclipse.jgit.treewalk.FileTreeIterator;
 import org.telegram.telegrambots.bots.DefaultBotOptions;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.TelegramBotsApi;
@@ -54,6 +51,7 @@ public class SamsungFWBot extends TelegramLongPollingBot {
     public static final List<String> KNOWN_MODELS = new ArrayList<>();
     public static final String KERNEL_REPO_URL = "https://github.com/Linux4/samsung_kernel";
     public static final String GH_USER = "Linux4";
+    public static final int MAX_CONCURRENT_DOWNLOADS = 5;
 
     public static void main(String[] args) {
         if (args.length != 4 && args.length != 5) {
@@ -118,6 +116,7 @@ public class SamsungFWBot extends TelegramLongPollingBot {
     private final String token;
     private boolean checksFinished = false;
     private final ConcurrentLinkedQueue<TelegramMessage> messageQueue = new ConcurrentLinkedQueue<>();
+    public static final ConcurrentLinkedQueue<Thread> downloadThreadQueue = new ConcurrentLinkedQueue<>();
 
     public SamsungFWBot(String botName, String token, String channelFw, String channelKernel, boolean oneshot) throws TelegramApiException, IOException, ParseException {
         super(new DefaultBotOptions());
@@ -300,10 +299,18 @@ public class SamsungFWBot extends TelegramLongPollingBot {
                                         e.printStackTrace();
                                     }
                                 }
+
+                                if (downloadThreadQueue.size() > 0 && (getActiveThreadsCount(threads) - 1) < MAX_CONCURRENT_DOWNLOADS) {
+                                    downloadThreadQueue.poll().start();
+                                }
                             }
                         });
-                        thread.start();
                         threads.add(thread);
+                        if (getActiveThreadsCount(threads) < MAX_CONCURRENT_DOWNLOADS) {
+                            thread.start();
+                        } else {
+                            downloadThreadQueue.add(thread);
+                        }
                     }
                 } else {
                     System.err.println("ERROR: Model " + model + " does not have any kernel source available!");
@@ -326,10 +333,7 @@ public class SamsungFWBot extends TelegramLongPollingBot {
             }
             int activeThreadsCount;
             do {
-                activeThreadsCount = 0;
-                for (Thread t : threads) {
-                    if (t.isAlive()) activeThreadsCount++;
-                }
+                activeThreadsCount = getActiveThreadsCount(threads);
                 System.out.println("Still active Threads: " + activeThreadsCount);
                 sleep();
             } while (activeThreadsCount > 0);
@@ -338,6 +342,15 @@ public class SamsungFWBot extends TelegramLongPollingBot {
 
         checksFinished = true;
         System.out.println("Checks finished");
+    }
+
+    private int getActiveThreadsCount(List<Thread> threads) {
+        int activeThreadsCount = 0;
+        for (Thread t : threads) {
+            if (t.isAlive()) activeThreadsCount++;
+        }
+
+        return activeThreadsCount;
     }
 
     @Override
