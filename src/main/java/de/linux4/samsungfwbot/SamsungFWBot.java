@@ -47,8 +47,6 @@ import java.util.zip.ZipFile;
 
 public class SamsungFWBot extends TelegramLongPollingBot {
 
-    public static final HashMap<String, String> KNOWN_REGIONS = new HashMap<>();
-    public static final List<String> KNOWN_MODELS = new ArrayList<>();
     public static final String KERNEL_REPO_URL = "https://github.com/Linux4/samsung_kernel";
     public static final String GH_USER = "Linux4";
     public static final int MAX_CONCURRENT_DOWNLOADS = 5;
@@ -69,32 +67,6 @@ public class SamsungFWBot extends TelegramLongPollingBot {
         }
 
         boolean oneshot = args.length == 5 && args[4].equalsIgnoreCase("oneshot");
-
-        try {
-            // load regions
-            BufferedReader reader = new BufferedReader(new FileReader("regions.txt"));
-            String line;
-
-            while (((line = reader.readLine())) != null) {
-                if (line.startsWith("#"))
-                    continue;
-
-                KNOWN_REGIONS.put(line.split(":")[0], line.split(":")[1]);
-            }
-            reader.close();
-            // load devices
-            reader = new BufferedReader(new FileReader("devices.txt"));
-
-            while (((line = reader.readLine())) != null) {
-                if (line.startsWith("#"))
-                    continue;
-
-                KNOWN_MODELS.add(line);
-            }
-            reader.close();
-        } catch (IOException ex) {
-            ex.printStackTrace();
-        }
 
         try {
             TelegramBotsApi botApi = new TelegramBotsApi(DefaultBotSession.class);
@@ -126,6 +98,7 @@ public class SamsungFWBot extends TelegramLongPollingBot {
 
         SamsungFWDatabase db = new SamsungFWDatabase("samsungfw.db");
         SamsungFWDatabase kernelDb = new SamsungFWDatabase("samsungkernel.db");
+        SamsungDeviceDatabase deviceDb = new SamsungDeviceDatabase();
 
         new Thread(() -> {
             System.out.println("Message thread start");
@@ -164,20 +137,18 @@ public class SamsungFWBot extends TelegramLongPollingBot {
         List<Thread> threads = new LinkedList<>();
 
         do {
-            for (String model : KNOWN_MODELS) {
-                String fwModel = model.contains(":") ? model.split(":")[0] : model;
-                String kernelModel = model.contains(":") ? model.split(":")[1] : model;
-                System.out.println("Processing model " + fwModel);
+            for (String model : deviceDb.getAllModels()) {
+                System.out.println("Processing model " + model);
                 boolean found = false;
 
-                for (String region : KNOWN_REGIONS.keySet()) {
-                    SamsungFWInfo info = SamsungFWInfo.fetchLatest(fwModel, region);
+                for (String region : deviceDb.getRegionsByModel(model)) {
+                    SamsungFWInfo info = SamsungFWInfo.fetchLatest(model, region);
 
                     if (info != null) {
-                        System.out.printf("Found firmware %s/%s for model %s%n", info.getPDA(), region, fwModel);
+                        System.out.printf("Found firmware %s/%s for model %s%n", info.getPDA(), region, model);
                         found = true;
 
-                        if (info.isNewerThan(db.getPDA(fwModel))) {
+                        if (info.isNewerThan(db.getPDA(model))) {
                             InlineKeyboardMarkup.InlineKeyboardMarkupBuilder keyboardBuilder =
                                     InlineKeyboardMarkup.builder().keyboardRow(
                                             List.of(InlineKeyboardButton.builder().text("Download")
@@ -195,40 +166,40 @@ public class SamsungFWBot extends TelegramLongPollingBot {
                                     + info.getChangelog() + " \n",
                                     keyboard));
 
-                            db.setPDA(fwModel, info.getPDA());
+                            db.setPDA(model, info.getPDA());
                         }
                     }
                 }
 
                 if (!found) {
-                    System.err.println("ERROR: Model " + fwModel + " not found in any known region! Known Regions: " + KNOWN_REGIONS.keySet());
+                    System.err.println("ERROR: Model " + model + " not found in any known region! Known Regions: " + deviceDb.getRegionsByModel(model));
                 }
 
-                SamsungKernelInfo info = SamsungKernelInfo.fetchLatest(kernelModel);
+                SamsungKernelInfo info = SamsungKernelInfo.fetchLatest(model);
 
                 if (info != null) {
-                    if (info.isNewerThan(kernelDb.getPDA(kernelModel))) {
+                    if (info.isNewerThan(kernelDb.getPDA(model))) {
                         // Prevent duplicate DL
-                        String oldPDA = kernelDb.getPDA(kernelModel);
-                        kernelDb.setPDA(kernelModel, info.getPDA());
+                        String oldPDA = kernelDb.getPDA(model);
+                        kernelDb.setPDA(model, info.getPDA());
 
                         Thread thread = new Thread(() -> {
                             File result = null, tmpDir = null;
                             try {
-                                System.out.println("Downloading kernel source for " + kernelModel);
+                                System.out.println("Downloading kernel source for " + model);
                                 result = info.download(new File("."));
 
                                 if (result != null) {
-                                    System.out.println("Uploading kernel source for " + kernelModel);
+                                    System.out.println("Uploading kernel source for " + model);
                                     ZipFile zipFile = new ZipFile(result);
-                                    tmpDir = new File("./samsung_kernel_" + kernelModel);
+                                    tmpDir = new File("./samsung_kernel_" + model);
                                     FileUtilsInternal.deleteRecursively(tmpDir);
                                     if (!tmpDir.mkdir()) System.err.println("Failed to create " + tmpDir);
                                     Git git = Git.init().setDirectory(tmpDir).call();
                                     git.remoteAdd().setName("origin").setUri(new URIish(KERNEL_REPO_URL)).call();
                                     try {
-                                        git.fetch().setRefSpecs(new RefSpec("refs/heads/" + kernelModel)).call();
-                                        git.checkout().setCreateBranch(true).setName(kernelModel)
+                                        git.fetch().setRefSpecs(new RefSpec("refs/heads/" + model)).call();
+                                        git.checkout().setCreateBranch(true).setName(model)
                                                 .setUpstreamMode(CreateBranchCommand.SetupUpstreamMode.TRACK)
                                                 .setStartPoint("FETCH_HEAD").call();
                                         git.pull().call();
@@ -273,10 +244,10 @@ public class SamsungFWBot extends TelegramLongPollingBot {
                                         }
 
                                         git.add().setWorkingTreeIterator(new ForceAddFileTreeIterator(git.getRepository())).addFilepattern(".").call();
-                                        git.commit().setMessage(kernelModel + ": Import " + info.getPDA() + " kernel source" + extraBuilder)
+                                        git.commit().setMessage(model + ": Import " + info.getPDA() + " kernel source" + extraBuilder)
                                                 .setAuthor("github-actions[bot]", "41898282+github-actions[bot]@users.noreply.github.com").call();
                                         git.tag().setName(info.getPDA()).call();
-                                        PushCommand push = git.push().setRemote("origin").setRefSpecs(new RefSpec("HEAD:refs/heads/" + kernelModel)).setPushTags();
+                                        PushCommand push = git.push().setRemote("origin").setRefSpecs(new RefSpec("HEAD:refs/heads/" + model)).setPushTags();
                                         push.setCredentialsProvider(new UsernamePasswordCredentialsProvider(GH_USER, System.getenv("GH_TOKEN")));
                                         push.call();
 
@@ -298,12 +269,12 @@ public class SamsungFWBot extends TelegramLongPollingBot {
                                 } else {
                                     System.err.println("ERROR: Failed to download " + info);
                                     if (oldPDA != null && oldPDA.length() > 0)
-                                        kernelDb.setPDA(kernelModel, oldPDA); // retry download
+                                        kernelDb.setPDA(model, oldPDA); // retry download
                                 }
                             } catch (Exception ex) {
                                 ex.printStackTrace();
                                 if (oldPDA != null && oldPDA.length() > 0)
-                                    kernelDb.setPDA(kernelModel, oldPDA); // retry download
+                                    kernelDb.setPDA(model, oldPDA); // retry download
                             } finally {
                                 if (result != null && result.exists()) if (!result.delete()) System.err.println("Failed to delete " + result);
                                 if (tmpDir != null && tmpDir.exists()) {
