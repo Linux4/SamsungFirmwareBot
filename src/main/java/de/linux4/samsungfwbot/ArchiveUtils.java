@@ -38,6 +38,7 @@ public class ArchiveUtils {
                 while ((entry = (TarArchiveEntry)tarIn.getNextEntry()) != null) {
                     if (!tarIn.canReadEntryData(entry)) continue;
                     File output = new File(targetDir, entry.getName());
+                    output.getParentFile().mkdirs();
                     if (entry.isDirectory()) {
                         if (!output.isDirectory() && !output.mkdirs()) {
                             throw new IOException("Failed to create directory " + output);
