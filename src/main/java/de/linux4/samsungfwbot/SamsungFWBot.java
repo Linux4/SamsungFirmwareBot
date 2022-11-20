@@ -222,7 +222,7 @@ public class SamsungFWBot extends TelegramLongPollingBot {
                                     System.out.println("Uploading kernel source for " + kernelModel);
                                     ZipFile zipFile = new ZipFile(result);
                                     tmpDir = new File("./samsung_kernel_" + kernelModel);
-                                    FileUtils.deleteDirectory(tmpDir);
+                                    FileUtilsInternal.deleteRecursively(tmpDir);
                                     if (!tmpDir.mkdir()) System.err.println("Failed to create " + tmpDir);
                                     Git git = Git.init().setDirectory(tmpDir).call();
                                     git.remoteAdd().setName("origin").setUri(new URIish(KERNEL_REPO_URL)).call();
@@ -279,7 +279,7 @@ public class SamsungFWBot extends TelegramLongPollingBot {
                                     } catch (RefAlreadyExistsException ignored) {
                                         System.err.println(info.getPDA() + " is already pushed, skipping!");
                                     } finally {
-                                        FileUtils.deleteDirectory(tmpDir);
+                                        FileUtilsInternal.deleteRecursively(tmpDir);
                                     }
                                 } else {
                                     System.err.println("ERROR: Failed to download " + info);
@@ -294,7 +294,7 @@ public class SamsungFWBot extends TelegramLongPollingBot {
                                 if (result != null && result.exists()) if (!result.delete()) System.err.println("Failed to delete " + result);
                                 if (tmpDir != null && tmpDir.exists()) {
                                     try {
-                                        FileUtils.deleteDirectory(tmpDir);
+                                        FileUtilsInternal.deleteRecursively(tmpDir);
                                     } catch (IOException e) {
                                         e.printStackTrace();
                                     }
