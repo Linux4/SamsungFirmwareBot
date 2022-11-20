@@ -125,6 +125,7 @@ public class SamsungKernelInfo {
                     if (models.contains(model)) {
                         String[] fwVersions = tableData.get(2).html().strip().split("<br>");
                         String fwVersion = fwVersions.length > 0 ? fwVersions[fwVersions.length - 1].strip() : "";
+                        fwVersion = fwVersion.replaceAll("[^a-zA-Z0-9]", "");
 
                         String uploadId = "";
                         Element downloadTd = tableData.get(4);
