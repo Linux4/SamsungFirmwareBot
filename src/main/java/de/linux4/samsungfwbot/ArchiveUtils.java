@@ -38,7 +38,21 @@ public class ArchiveUtils {
                 while ((entry = (TarArchiveEntry)tarIn.getNextEntry()) != null) {
                     if (!tarIn.canReadEntryData(entry)) continue;
                     File output = new File(targetDir, entry.getName());
-                    output.getParentFile().mkdirs();
+                    File parentDir = output.getParentFile();
+                    if (Files.isSymbolicLink(parentDir.toPath())) {
+                        // Symbolic link?
+                        try {
+                            File target = Files.readSymbolicLink(parentDir.toPath()).toFile();
+                            if (!target.toString().startsWith("/")) { // Relative path
+                                target = new File(parentDir.getParentFile(), target.toString());
+                            }
+                            target.mkdirs();
+                        } catch (Exception ex) {
+                            ex.printStackTrace();
+                        }
+                    } else {
+                        parentDir.mkdirs();
+                    }
                     if (entry.isDirectory()) {
                         if (!output.isDirectory() && !output.mkdirs()) {
                             throw new IOException("Failed to create directory " + output);
