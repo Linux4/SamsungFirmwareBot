@@ -78,7 +78,7 @@ public class SamsungFWBot extends TelegramLongPollingBot {
 
     private void sleep() {
         try {
-            Thread.sleep(20 * 1000); // 20s - prevent telegram spam protection
+            Thread.sleep(3 * 1000); // 3s - prevent telegram spam protection
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
