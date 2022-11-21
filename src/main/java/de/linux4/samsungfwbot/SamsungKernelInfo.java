@@ -31,6 +31,8 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.List;
 
 public class SamsungKernelInfo {
 
@@ -112,31 +114,39 @@ public class SamsungKernelInfo {
         try {
             Document doc = Jsoup.connect(OSS_SEARCH_URL + model).timeout(10 * 60 * 1000).get();
 
-            Elements tableData = doc.getElementsByTag("td");
+            Elements tableRows = doc.getElementsByTag("tr");
 
-            if (tableData.size() > 4) {
-                String[] fwVersions = tableData.get(2).html().strip().split("<br>");
-                String fwVersion = fwVersions.length > 0 ? fwVersions[fwVersions.length - 1].strip() : "";
+            for (Element tableRow : tableRows) {
+                Elements tableData = tableRow.getElementsByTag("td");
 
-                String uploadId = "";
-                Element downloadTd = tableData.get(4);
+                if (tableData.size() > 4) {
+                    List<String> models = Arrays.asList(tableData.get(1).html().strip().split("<br>"));
 
-                String[] broken = downloadTd.html().split("'");
+                    if (models.contains(model)) {
+                        String[] fwVersions = tableData.get(2).html().strip().split("<br>");
+                        String fwVersion = fwVersions.length > 0 ? fwVersions[fwVersions.length - 1].strip() : "";
 
-                if (broken.length > 1)
-                    uploadId = broken[1].strip();
+                        String uploadId = "";
+                        Element downloadTd = tableData.get(4);
 
-                // Check if there is a patch zip file for a newer PDA version!
-                String[] downloadFiles = tableData.get(3).html().strip().split("<br>");
-                if (downloadFiles.length > 1) {// patch found
-                    // <model>_<android version>_Opensource_<PDA>.zip
-                    broken = downloadFiles[downloadFiles.length - 1].split("_");
-                    String patchVersion = broken[broken.length - 1].split("\\.")[0];
+                        String[] broken = downloadTd.html().split("'");
 
-                    return new SamsungKernelInfo(model, patchVersion, uploadId, fwVersion);
+                        if (broken.length > 1)
+                            uploadId = broken[1].strip();
+
+                        // Check if there is a patch zip file for a newer PDA version!
+                        String[] downloadFiles = tableData.get(3).html().strip().split("<br>");
+                        if (downloadFiles.length > 1) {// patch found
+                            // <model>_<android version>_Opensource_<PDA>.zip
+                            broken = downloadFiles[downloadFiles.length - 1].split("_");
+                            String patchVersion = broken[broken.length - 1].split("\\.")[0];
+
+                            return new SamsungKernelInfo(model, patchVersion, uploadId, fwVersion);
+                        }
+
+                        return new SamsungKernelInfo(model, fwVersion, uploadId, null);
+                    }
                 }
-
-                return new SamsungKernelInfo(model, fwVersion, uploadId, null);
             }
         } catch (Exception ex) {
             ex.printStackTrace();
