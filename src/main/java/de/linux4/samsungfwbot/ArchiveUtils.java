@@ -3,21 +3,20 @@ package de.linux4.samsungfwbot;
 import org.apache.commons.compress.archivers.ArchiveInputStream;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
-import org.apache.commons.compress.archivers.zip.ZipArchiveEntry;
-import org.apache.commons.compress.archivers.zip.ZipArchiveInputStream;
 import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
-import org.apache.commons.io.Charsets;
 import org.apache.commons.io.IOUtils;
 
 import java.io.*;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermissions;
+import java.util.ArrayList;
 import java.util.List;
 
 public class ArchiveUtils {
+
+    public static final int MAX_FILE_SIZE = 100 * 1000 * 1000; // 100 MB
 
     public static String permsToString(int mode) {
         StringBuilder modString = new StringBuilder();
@@ -31,7 +30,9 @@ public class ArchiveUtils {
         return modString.toString();
     }
 
-    public static void extractTarGz(File in, File targetDir) {
+    public static List<String> extractTarGz(File in, File targetDir) {
+        List<String> ignoredFiles = new ArrayList<>();
+
         try (GzipCompressorInputStream gzIn = new GzipCompressorInputStream(new FileInputStream(in))) {
             try (ArchiveInputStream tarIn = new TarArchiveInputStream(gzIn)) {
                 TarArchiveEntry entry;
@@ -65,8 +66,12 @@ public class ArchiveUtils {
                         }
                         Files.createSymbolicLink(output.toPath(), Path.of(entry.getLinkName()));
                     } else {
-                        try (OutputStream out = Files.newOutputStream(output.toPath())) {
-                            IOUtils.copy(tarIn, out);
+                        if (entry.getSize() <= MAX_FILE_SIZE) {
+                            try (OutputStream out = Files.newOutputStream(output.toPath())) {
+                                IOUtils.copy(tarIn, out);
+                            }
+                        } else {
+                            ignoredFiles.add(entry.getName());
                         }
                     }
                     if (!entry.isSymbolicLink())
@@ -76,5 +81,7 @@ public class ArchiveUtils {
         } catch (IOException e) {
             e.printStackTrace();
         }
+
+        return ignoredFiles;
     }
 }

@@ -236,13 +236,17 @@ public class SamsungFWBot extends TelegramLongPollingBot {
 
                                     }
 
+                                    List<String> ignoredFiles = new ArrayList<>();
                                     if (info.getPatchKernel() != null) {
                                         Enumeration<? extends ZipEntry> entries = zipFile.entries();
                                         for (ZipEntry entry = entries.nextElement(); entries.hasMoreElements(); entry = entries.nextElement()) {
                                             if (entry.getName().startsWith("Kernel/")) {
-                                                File output = new File(tmpDir, entry.getName().substring("Kernel/".length()));
-                                                // TODO: This might need to be updated to support symlinks and file permissions as well
-                                                FileUtils.copyInputStreamToFile(zipFile.getInputStream(entry), output);
+                                                if (entry.getSize() <= ArchiveUtils.MAX_FILE_SIZE) {
+                                                    File output = new File(tmpDir, entry.getName().substring("Kernel/".length()));
+                                                    FileUtils.copyInputStreamToFile(zipFile.getInputStream(entry), output);
+                                                } else {
+                                                    ignoredFiles.add(entry.getName().substring("Kernel/".length()));
+                                                }
                                             }
                                         }
                                     } else {
@@ -251,15 +255,25 @@ public class SamsungFWBot extends TelegramLongPollingBot {
                                         File kernelTar = new File("/tmp/Kernel-" + info.getPDA() + ".tar.gz");
                                         FileUtils.copyInputStreamToFile(zipFile.getInputStream(kernel), kernelTar);
 
-                                        ArchiveUtils.extractTarGz(kernelTar, tmpDir);
+                                        ignoredFiles.addAll(ArchiveUtils.extractTarGz(kernelTar, tmpDir));
                                         if (!kernelTar.delete()) System.err.println("Failed to delete " + result);
                                     }
                                     zipFile.close();
                                     if (!result.delete()) System.err.println("Failed to delete " + result);
 
                                     try {
+                                        StringBuilder extraBuilder = new StringBuilder();
+                                        if (ignoredFiles.size() > 0) {
+                                            extraBuilder.append("\n\nThe following files were removed because they exceed github's file size limit:");
+
+                                            for (String ignoredFile : ignoredFiles) {
+                                                extraBuilder.append("\n - ");
+                                                extraBuilder.append(ignoredFile);
+                                            }
+                                        }
+
                                         git.add().setWorkingTreeIterator(new ForceAddFileTreeIterator(git.getRepository())).addFilepattern(".").call();
-                                        git.commit().setMessage(kernelModel + ": Import " + info.getPDA() + " kernel source")
+                                        git.commit().setMessage(kernelModel + ": Import " + info.getPDA() + " kernel source" + extraBuilder)
                                                 .setAuthor("github-actions[bot]", "41898282+github-actions[bot]@users.noreply.github.com").call();
                                         git.tag().setName(info.getPDA()).call();
                                         PushCommand push = git.push().setRemote("origin").setRefSpecs(new RefSpec("HEAD:refs/heads/" + kernelModel)).setPushTags();
