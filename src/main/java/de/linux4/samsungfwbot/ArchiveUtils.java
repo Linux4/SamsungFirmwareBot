@@ -30,57 +30,48 @@ public class ArchiveUtils {
         return modString.toString();
     }
 
-    public static List<String> extractTarGz(File in, File targetDir) {
+    public static List<String> extractTarGz(File in, File targetDir) throws IOException {
         List<String> ignoredFiles = new ArrayList<>();
 
-        try (GzipCompressorInputStream gzIn = new GzipCompressorInputStream(new FileInputStream(in))) {
-            try (ArchiveInputStream tarIn = new TarArchiveInputStream(gzIn)) {
-                TarArchiveEntry entry;
-                while ((entry = (TarArchiveEntry)tarIn.getNextEntry()) != null) {
-                    if (!tarIn.canReadEntryData(entry)) continue;
-                    File output = new File(targetDir, entry.getName());
-                    File parentDir = output.getParentFile();
-                    if (Files.isSymbolicLink(parentDir.toPath())) {
-                        // Symbolic link?
-                        try {
-                            File target = Files.readSymbolicLink(parentDir.toPath()).toFile();
-                            if (!target.toString().startsWith("/")) { // Relative path
-                                target = new File(parentDir.getParentFile(), target.toString());
-                            }
-                            target.mkdirs();
-                        } catch (Exception ex) {
-                            ex.printStackTrace();
-                        }
-                    } else {
-                        parentDir.mkdirs();
-                    }
-                    if (entry.isDirectory()) {
-                        if (!output.isDirectory() && !output.mkdirs()) {
-                            throw new IOException("Failed to create directory " + output);
-                        }
-                    } else if (entry.isSymbolicLink()) {
-                        try {
-                            Files.delete(output.toPath());
-                        } catch (NoSuchFileException ignored) {
+        GzipCompressorInputStream gzIn = new GzipCompressorInputStream(new FileInputStream(in));
+        ArchiveInputStream tarIn = new TarArchiveInputStream(gzIn);
+        TarArchiveEntry entry;
+        while ((entry = (TarArchiveEntry) tarIn.getNextEntry()) != null) {
+            if (!tarIn.canReadEntryData(entry)) continue;
+            File output = new File(targetDir, entry.getName());
+            File parentDir = output.getParentFile();
+            if (Files.isSymbolicLink(parentDir.toPath())) {
+                // Symbolic link?
+                File target = Files.readSymbolicLink(parentDir.toPath()).toFile();
+                if (!target.toString().startsWith("/")) { // Relative path
+                    target = new File(parentDir.getParentFile(), target.toString());
+                }
+                target.mkdirs();
+            } else {
+                parentDir.mkdirs();
+            }
+            if (entry.isDirectory()) {
+                if (!output.isDirectory() && !output.mkdirs()) {
+                    throw new IOException("Failed to create directory " + output);
+                }
+            } else if (entry.isSymbolicLink()) {
+                try {
+                    Files.delete(output.toPath());
+                } catch (NoSuchFileException ignored) {
 
-                        }
-                        Files.createSymbolicLink(output.toPath(), Path.of(entry.getLinkName()));
-                    } else {
-                        if (entry.getSize() <= MAX_FILE_SIZE) {
-                            try (OutputStream out = Files.newOutputStream(output.toPath())) {
-                                IOUtils.copy(tarIn, out);
-                            }
-                        } else {
-                            ignoredFiles.add(entry.getName());
-                            continue;
-                        }
-                    }
-                    if (!entry.isSymbolicLink())
-                        Files.setPosixFilePermissions(output.toPath(), PosixFilePermissions.fromString(permsToString(entry.getMode())));
+                }
+                Files.createSymbolicLink(output.toPath(), Path.of(entry.getLinkName()));
+            } else {
+                if (entry.getSize() <= MAX_FILE_SIZE) {
+                    OutputStream out = Files.newOutputStream(output.toPath());
+                    IOUtils.copy(tarIn, out);
+                } else {
+                    ignoredFiles.add(entry.getName());
+                    continue;
                 }
             }
-        } catch (IOException e) {
-            e.printStackTrace();
+            if (!entry.isSymbolicLink())
+                Files.setPosixFilePermissions(output.toPath(), PosixFilePermissions.fromString(permsToString(entry.getMode())));
         }
 
         return ignoredFiles;
