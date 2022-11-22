@@ -72,6 +72,7 @@ public class ArchiveUtils {
                             }
                         } else {
                             ignoredFiles.add(entry.getName());
+                            continue;
                         }
                     }
                     if (!entry.isSymbolicLink())
