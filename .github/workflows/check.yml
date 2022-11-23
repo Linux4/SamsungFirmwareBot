@@ -2,7 +2,7 @@ name: Check for firmware and kernel updates
 
 on:
   schedule:
-    - cron: '0 * * * *'
+    - cron: '0 */6 * * *'
   push:
   workflow_dispatch:
 
