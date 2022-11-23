@@ -47,12 +47,25 @@ public class SamsungFWDatabase {
         return "";
     }
 
+    private boolean checkModelExists(String model) {
+        try {
+            PreparedStatement ps = conn.prepareStatement("SELECT PDA FROM pda WHERE Model LIKE ?");
+            ps.setString(1, model);
+            ResultSet rs = ps.executeQuery();
+
+            return rs.next();
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+        }
+        return false;
+    }
+
     public void setPDA(String model, String pda) {
         try {
             PreparedStatement ps;
 
             // does not yet exist in db
-            if (getPDA(model).isEmpty())
+            if (!checkModelExists(model))
                 ps = conn.prepareStatement("INSERT INTO pda (PDA, Model) VALUES (?, ?)");
             else
                 ps = conn.prepareStatement("UPDATE pda SET PDA = ? WHERE Model LIKE ?");
