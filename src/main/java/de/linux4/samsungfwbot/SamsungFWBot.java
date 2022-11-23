@@ -254,7 +254,7 @@ public class SamsungFWBot extends TelegramLongPollingBot {
                                         git.add().setWorkingTreeIterator(new ForceAddFileTreeIterator(git.getRepository())).addFilepattern(".").call();
                                         git.commit().setMessage(model + ": Import " + info.getPDA() + " kernel source" + extraBuilder)
                                                 .setAuthor("github-actions[bot]", "41898282+github-actions[bot]@users.noreply.github.com").call();
-                                        git.tag().setName(info.getPDA()).call();
+                                        git.tag().setName(model + '/' + info.getPDA()).call();
                                         PushCommand push = git.push().setRemote("origin").setRefSpecs(new RefSpec("HEAD:refs/heads/" + model)).setPushTags();
                                         push.setCredentialsProvider(new UsernamePasswordCredentialsProvider(GH_USER, System.getenv("GH_TOKEN")));
                                         push.call();
@@ -262,7 +262,7 @@ public class SamsungFWBot extends TelegramLongPollingBot {
                                         InlineKeyboardMarkup.InlineKeyboardMarkupBuilder keyboardBuilder =
                                                 InlineKeyboardMarkup.builder().keyboardRow(
                                                         List.of(InlineKeyboardButton.builder().text("View")
-                                                                .url(KERNEL_REPO_URL + "/tree/" + info.getPDA()).build()));
+                                                                .url(KERNEL_REPO_URL + "/tree/" + model + '/' + info.getPDA()).build()));
                                         InlineKeyboardMarkup keyboard = keyboardBuilder.build();
                                         messageQueue.add(new TelegramMessage(channelKernel, "New kernel sources available! \n"
                                                 + "Model: " + info.getModel() + " \n"
