@@ -13,11 +13,23 @@ import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class ArchiveUtils {
 
     public static final int MAX_FILE_SIZE = 100 * 1000 * 1000; // 100 MB
+    public static final byte[] ZIP_MAGIC = new byte[] { 0x50, 0x4b, 0x03, 0x04 };
+
+    public static boolean isZip(File file) throws IOException {
+        byte[] magic = new byte[ZIP_MAGIC.length];
+        FileInputStream fin = new FileInputStream(file);
+
+        fin.read(magic);
+        fin.close();
+
+        return Arrays.equals(magic, ZIP_MAGIC);
+    }
 
     public static String permsToString(int mode) {
         StringBuilder modString = new StringBuilder();

@@ -191,7 +191,9 @@ public class SamsungFWBot extends TelegramLongPollingBot {
 
                                 if (result != null) {
                                     System.out.println("Uploading kernel source for " + model);
-                                    ZipFile zipFile = new ZipFile(result);
+                                    ZipFile zipFile = null;
+                                    if (ArchiveUtils.isZip(result))
+                                        zipFile = new ZipFile(result);
                                     tmpDir = new File("./samsung_kernel_" + model);
                                     FileUtilsInternal.deleteRecursively(tmpDir);
                                     if (!tmpDir.mkdir()) System.err.println("Failed to create " + tmpDir);
@@ -222,15 +224,21 @@ public class SamsungFWBot extends TelegramLongPollingBot {
                                         }
                                     } else {
                                         git.rm().addFilepattern("*").call();
-                                        ZipEntry kernel = zipFile.getEntry("Kernel.tar.gz");
                                         File kernelTar = new File("/tmp/Kernel-" + info.getPDA() + ".tar.gz");
-                                        FileUtils.copyInputStreamToFile(zipFile.getInputStream(kernel), kernelTar);
+                                        if (zipFile != null) {
+                                            ZipEntry kernel = zipFile.getEntry("Kernel.tar.gz");
+                                            FileUtils.copyInputStreamToFile(zipFile.getInputStream(kernel), kernelTar);
+                                        } else {
+                                            kernelTar = result;
+                                        }
 
                                         ignoredFiles.addAll(ArchiveUtils.extractTarGz(kernelTar, tmpDir));
                                         if (!kernelTar.delete()) System.err.println("Failed to delete " + result);
                                     }
-                                    zipFile.close();
-                                    if (!result.delete()) System.err.println("Failed to delete " + result);
+                                    if (zipFile != null) {
+                                        zipFile.close();
+                                        if (!result.delete()) System.err.println("Failed to delete " + result);
+                                    }
 
                                     try {
                                         StringBuilder extraBuilder = new StringBuilder();
