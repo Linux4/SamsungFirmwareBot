@@ -7,6 +7,7 @@ import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
 import org.apache.commons.io.IOUtils;
 
 import java.io.*;
+import java.nio.file.DirectoryNotEmptyException;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
@@ -59,6 +60,9 @@ public class ArchiveUtils {
                     Files.delete(output.toPath());
                 } catch (NoSuchFileException ignored) {
 
+                } catch (DirectoryNotEmptyException ex) {
+                    System.err.println("Warning: Skipping creation of symlink " + output.toPath() + " because a non-empty directory already exists!");
+                    continue;
                 }
                 Files.createSymbolicLink(output.toPath(), Path.of(entry.getLinkName()));
             } else {
