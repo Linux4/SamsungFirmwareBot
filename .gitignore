@@ -2,6 +2,7 @@
 /target
 /bin
 /img
+/db
 
 .classpath
 *.binlog

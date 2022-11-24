@@ -19,6 +19,12 @@ jobs:
       with:
         submodules: true
 
+    - name: Checkout databases
+      uses: actions/checkout@v2
+      with:
+        ref: 'refs/heads/db'
+        path: 'db'
+
     - name: Setup Java 17
       uses: actions/setup-java@v2
       with:
@@ -43,15 +49,15 @@ jobs:
 
     - name: Update devices
       run: |
-        git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
-        git config --local user.name "github-actions[bot]"
-        git pull origin ${{github.ref}} --ff-only
-        git add devices.db
-        git commit -m "samsungfwbot: Devices list update $(date)" || true
+        git -C db config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git -C db config --local user.name "github-actions[bot]"
+        git -C db pull origin db --ff-only
+        git -C db add devices.db
+        git -C db commit -m "samsungfwbot: Devices list update $(date)" || true
 
-    - name: Push changes to repo
+    - name: Push database changes to repo
       uses: ad-m/github-push-action@master
       with:
-        tags: true
-        branch: ${{ github.ref }}
         github_token: ${{ secrets.GITHUB_TOKEN }}
+        branch: 'db'
+        directory: 'db'

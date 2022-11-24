@@ -96,8 +96,8 @@ public class SamsungFWBot extends TelegramLongPollingBot {
         this.botName = botName;
         this.token = token;
 
-        SamsungFWDatabase db = new SamsungFWDatabase("samsungfw.db");
-        SamsungFWDatabase kernelDb = new SamsungFWDatabase("samsungkernel.db");
+        SamsungFWDatabase db = new SamsungFWDatabase("db/samsungfw.db");
+        SamsungFWDatabase kernelDb = new SamsungFWDatabase("db/samsungkernel.db");
         SamsungDeviceDatabase deviceDb = new SamsungDeviceDatabase();
 
         new Thread(() -> {

@@ -21,7 +21,7 @@ import java.util.*;
 
 public class SamsungDeviceDatabase {
 
-    private static final String file = "devices.db";
+    private static final String file = "db/devices.db";
 
     private Connection conn = null;
 
