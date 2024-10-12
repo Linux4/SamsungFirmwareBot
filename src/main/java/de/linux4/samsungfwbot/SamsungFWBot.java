@@ -50,7 +50,7 @@ public class SamsungFWBot extends TelegramLongPollingBot {
 
     public static final String KERNEL_REPO_URL = "https://github.com/Linux4/samsung_kernel";
     public static final String GH_USER = "Linux4";
-    public static final int MAX_CONCURRENT_DOWNLOADS = 5;
+    public static final int MAX_CONCURRENT_DOWNLOADS = 2;
 
     public static void main(String[] args) {
         if (args.length != 5 && args.length != 6) {
