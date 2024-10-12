@@ -38,6 +38,7 @@ public class SamsungKernelInfo {
 
     private static final String OSS_BASE_URL = "https://opensource.samsung.com";
     private static final String OSS_SEARCH_URL = OSS_BASE_URL + "/uploadSearch?searchValue=";
+    private static final String OSS_HCAPTCHA_SITE_KEY = "f397ed2f-1dbd-450a-80fc-df93acc5a96f";
 
     private final String model;
     private final String pda;
@@ -156,15 +157,59 @@ public class SamsungKernelInfo {
         return null;
     }
 
-    public File download(File folder) throws IOException {
+    public File download(CapSolver solver, File folder) throws IOException {
         File dst = new File(folder, model + "-" + pda + ".zip");
 
-        Connection.Response res = Jsoup.connect(OSS_BASE_URL + "/downSrcMPop?uploadId=" + uploadId).timeout(10 * 60 * 1000).execute();
+        Connection.Response res = Jsoup.connect(OSS_SEARCH_URL + model).timeout(10 * 60 * 1000).execute();
         Document doc = res.parse();
         Elements _csrfElem = doc.getElementsByAttributeValue("name", "_csrf");
+
+        StringBuilder cookie = new StringBuilder();
+
+        cookie.append("; __COM_SPEED=H");
+        cookie.append("; device_type=pc");
+        cookie.append("; fileDownload=true");
+
+        for (String cookieKey : res.cookies().keySet()) {
+            if (!cookie.isEmpty())
+                cookie.append(';');
+
+            cookie.append(cookieKey).append("=").append(res.cookies().get(cookieKey));
+        }
+
+        int retries = 0;
+        do {
+            retries++;
+
+            String captcha = retries == 1 ? solver.solveCached(CapSolver.CaptchaType.HCAPTCHA, OSS_HCAPTCHA_SITE_KEY, OSS_BASE_URL)
+                    : solver.solve(CapSolver.CaptchaType.HCAPTCHA, OSS_HCAPTCHA_SITE_KEY, OSS_BASE_URL);
+            String query = "g-recaptcha-response=" + captcha + "&h-captcha-response=" + captcha + "&uploadId=" + uploadId;
+            byte[] queryBin = query.getBytes(StandardCharsets.UTF_8);
+            HttpURLConnection conn = (HttpURLConnection) new URL(OSS_BASE_URL + "/downSrcMPop").openConnection();
+            conn.setRequestMethod("POST");
+            conn.setDoOutput(true);
+            conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8");
+            conn.setRequestProperty("Content-Length", "" + queryBin.length);
+            conn.setRequestProperty("Cookie", cookie.toString());
+            conn.setRequestProperty("Origin", OSS_BASE_URL);
+            conn.setRequestProperty("Referer", OSS_SEARCH_URL + model);
+            conn.setRequestProperty("User-Agent", "Mozilla/5.0 (X11; Linux x86_64; rv:90.0) Gecko/20100101 Firefox/90.0");
+            if (!_csrfElem.isEmpty()) {
+                conn.setRequestProperty("X-Csrf-Token", _csrfElem.get(0).val());
+            }
+            conn.setRequestProperty("X-Requested-With", "XMLHttpRequest");
+            conn.connect();
+
+            try (OutputStream os = conn.getOutputStream()) {
+                os.write(queryBin);
+            }
+
+            doc = Jsoup.parse(conn.getInputStream(), StandardCharsets.UTF_8.name(), OSS_BASE_URL + "/downSrcMPop");
+        } while (retries < 10 && doc.toString().contains("Prove that you are Human."));
+        _csrfElem = doc.getElementsByAttributeValue("name", "_csrf");
         Elements checkboxes = doc.getElementsByAttributeValue("type", "checkbox");
 
-        if (_csrfElem.size() > 0 && checkboxes.size() > 1) {
+        if (!_csrfElem.isEmpty() && checkboxes.size() > 1) {
             String _csrf = _csrfElem.get(0).val();
             String attachIds = null;
 
@@ -202,18 +247,6 @@ public class SamsungKernelInfo {
                 String query = "_csrf=" + _csrf + "&uploadId=" + uploadId + "&attachIds=" + attachIds
                         + "&downloadPurpose=ETC&token=" + URLEncoder.encode(token, StandardCharsets.UTF_8);
                 byte[] queryBin = query.getBytes(StandardCharsets.UTF_8);
-                StringBuilder cookie = new StringBuilder();
-
-                for (String cookieKey : res.cookies().keySet()) {
-                    if (cookie.length() > 0)
-                        cookie.append("; ");
-
-                    cookie.append(cookieKey).append("=").append(res.cookies().get(cookieKey));
-                }
-
-                cookie.append("; __COM_SPEED=H");
-                cookie.append("; device_type=pc");
-                cookie.append("; fileDownload=true");
 
                 HttpURLConnection conn = (HttpURLConnection) new URL(OSS_BASE_URL + "/downSrcCode").openConnection();
                 conn.setRequestMethod("POST");

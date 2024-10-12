@@ -20,6 +20,7 @@ import org.apache.commons.io.FileUtils;
 import org.eclipse.jgit.api.CreateBranchCommand;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.PushCommand;
+import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.api.errors.RefAlreadyExistsException;
 import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.URIish;
@@ -52,7 +53,7 @@ public class SamsungFWBot extends TelegramLongPollingBot {
     public static final int MAX_CONCURRENT_DOWNLOADS = 5;
 
     public static void main(String[] args) {
-        if (args.length != 4 && args.length != 5) {
+        if (args.length != 5 && args.length != 6) {
             if (args.length == 1 && args[0].equalsIgnoreCase("scrapeDevices")) {
                 try {
                     SamsungDeviceScraper.main(args);
@@ -61,16 +62,16 @@ public class SamsungFWBot extends TelegramLongPollingBot {
                 return;
             }
             // channels can be id or @channelname
-            System.out.println("Usage: java -jar samsungfwbot.jar <bot name> <bot token> <firmware channel> <kernel channel> [oneshot]");
+            System.out.println("Usage: java -jar samsungfwbot.jar <bot name> <bot token> <capsolver token> <firmware channel> <kernel channel> [oneshot]");
             System.out.println("Usage: java -jar samsungfwbot.jar scrapeDevices");
             return;
         }
 
-        boolean oneshot = args.length == 5 && args[4].equalsIgnoreCase("oneshot");
+        boolean oneshot = args.length == 6 && args[5].equalsIgnoreCase("oneshot");
 
         try {
             TelegramBotsApi botApi = new TelegramBotsApi(DefaultBotSession.class);
-            botApi.registerBot(new SamsungFWBot(args[0], args[1], args[2], args[3], oneshot));
+            botApi.registerBot(new SamsungFWBot(args[0], args[1], args[2], args[3], args[4], oneshot));
         } catch (TelegramApiException | IOException | ParseException ex) {
             ex.printStackTrace();
         }
@@ -86,15 +87,18 @@ public class SamsungFWBot extends TelegramLongPollingBot {
 
     private final String botName;
     private final String token;
+    private final CapSolver capSolver;
     private boolean checksFinished = false;
     private final ConcurrentLinkedQueue<TelegramMessage> messageQueue = new ConcurrentLinkedQueue<>();
     public static final ConcurrentLinkedQueue<Thread> downloadThreadQueue = new ConcurrentLinkedQueue<>();
 
-    public SamsungFWBot(String botName, String token, String channelFw, String channelKernel, boolean oneshot) throws TelegramApiException, IOException, ParseException {
+    public SamsungFWBot(String botName, String token, String capSolverToken, String channelFw, String channelKernel,
+                        boolean oneshot) throws TelegramApiException, IOException, ParseException {
         super(new DefaultBotOptions());
 
         this.botName = botName;
         this.token = token;
+        this.capSolver = new CapSolver(capSolverToken);
 
         SamsungFWDatabase db = new SamsungFWDatabase("db/samsungfw.db");
         SamsungFWDatabase kernelDb = new SamsungFWDatabase("db/samsungkernel.db");
@@ -187,7 +191,7 @@ public class SamsungFWBot extends TelegramLongPollingBot {
                             File result = null, tmpDir = null;
                             try {
                                 System.out.println("Downloading kernel source for " + model);
-                                result = info.download(new File("."));
+                                result = info.download(capSolver, new File("."));
 
                                 if (result != null) {
                                     System.out.println("Uploading kernel source for " + model);
@@ -223,7 +227,7 @@ public class SamsungFWBot extends TelegramLongPollingBot {
                                             }
                                         }
                                     } else {
-                                        git.rm().addFilepattern("*").call();
+                                        gitRm(git, git.getRepository().getWorkTree());
                                         File kernelTar = new File("/tmp/Kernel-" + info.getPDA() + ".tar.gz");
                                         if (zipFile != null) {
                                             ZipEntry kernel = zipFile.getEntry("Kernel.tar.gz");
@@ -333,6 +337,20 @@ public class SamsungFWBot extends TelegramLongPollingBot {
 
         checksFinished = true;
         System.out.println("Checks finished");
+    }
+
+    private void gitRm(Git git, File file) throws GitAPIException {
+        File baseDir = git.getRepository().getWorkTree();
+
+        if (file.isDirectory()) {
+            for (File child : file.listFiles()) {
+                gitRm(git, child);
+            }
+            file.delete();
+        } else {
+            String path = baseDir.toURI().relativize(file.toURI()).getPath();
+            git.rm().addFilepattern(path).call();
+        }
     }
 
     private int getActiveThreadsCount(List<Thread> threads) {
