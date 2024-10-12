@@ -20,6 +20,7 @@ import org.apache.commons.io.FileUtils;
 import org.eclipse.jgit.api.CreateBranchCommand;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.PushCommand;
+import org.eclipse.jgit.api.RmCommand;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.api.errors.RefAlreadyExistsException;
 import org.eclipse.jgit.transport.RefSpec;
@@ -227,7 +228,7 @@ public class SamsungFWBot extends TelegramLongPollingBot {
                                             }
                                         }
                                     } else {
-                                        gitRm(git, git.getRepository().getWorkTree());
+                                        gitRm(git, git.rm(), git.getRepository().getWorkTree()).call();
                                         File kernelTar = new File("/tmp/Kernel-" + info.getPDA() + ".tar.gz");
                                         if (zipFile != null) {
                                             ZipEntry kernel = zipFile.getEntry("Kernel.tar.gz");
@@ -339,18 +340,20 @@ public class SamsungFWBot extends TelegramLongPollingBot {
         System.out.println("Checks finished");
     }
 
-    private void gitRm(Git git, File file) throws GitAPIException {
+    private RmCommand gitRm(Git git, RmCommand rm, File file) throws GitAPIException {
         File baseDir = git.getRepository().getWorkTree();
 
         if (file.isDirectory()) {
             for (File child : file.listFiles()) {
-                gitRm(git, child);
+                gitRm(git, rm, child);
             }
             file.delete();
         } else {
             String path = baseDir.toURI().relativize(file.toURI()).getPath();
-            git.rm().addFilepattern(path).call();
+            rm.addFilepattern(path);
         }
+
+        return rm;
     }
 
     private int getActiveThreadsCount(List<Thread> threads) {
