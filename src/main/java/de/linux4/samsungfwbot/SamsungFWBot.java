@@ -22,6 +22,7 @@ import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.PushCommand;
 import org.eclipse.jgit.api.RmCommand;
 import org.eclipse.jgit.api.errors.GitAPIException;
+import org.eclipse.jgit.api.errors.NoFilepatternException;
 import org.eclipse.jgit.api.errors.RefAlreadyExistsException;
 import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.URIish;
@@ -228,7 +229,11 @@ public class SamsungFWBot extends TelegramLongPollingBot {
                                             }
                                         }
                                     } else {
-                                        gitRm(git, git.rm(), git.getRepository().getWorkTree()).call();
+                                        try {
+                                            gitRm(git, git.rm(), git.getRepository().getWorkTree()).call();
+                                        } catch (NoFilepatternException ignored) {
+
+                                        }
                                         File kernelTar = new File("/tmp/Kernel-" + info.getPDA() + ".tar.gz");
                                         if (zipFile != null) {
                                             ZipEntry kernel = zipFile.getEntry("Kernel.tar.gz");
@@ -343,11 +348,13 @@ public class SamsungFWBot extends TelegramLongPollingBot {
     private RmCommand gitRm(Git git, RmCommand rm, File file) throws GitAPIException {
         File baseDir = git.getRepository().getWorkTree();
 
+        if (file.equals(git.getRepository().getDirectory()))
+            return rm;
+
         if (file.isDirectory()) {
             for (File child : file.listFiles()) {
                 gitRm(git, rm, child);
             }
-            file.delete();
         } else {
             String path = baseDir.toURI().relativize(file.toURI()).getPath();
             rm.addFilepattern(path);
