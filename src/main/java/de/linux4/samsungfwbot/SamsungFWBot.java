@@ -263,7 +263,8 @@ public class SamsungFWBot extends TelegramLongPollingBot {
 
                                         git.add().setWorkingTreeIterator(new ForceAddFileTreeIterator(git.getRepository())).addFilepattern(".").call();
                                         git.commit().setMessage(model + ": Import " + info.getPDA() + " kernel source" + extraBuilder)
-                                                .setAuthor("github-actions[bot]", "41898282+github-actions[bot]@users.noreply.github.com").call();
+                                                .setAuthor("github-actions[bot]", "41898282+github-actions[bot]@users.noreply.github.com")
+                                                .setSign(false).call();
                                         git.tag().setName(model + '/' + info.getPDA()).call();
                                         PushCommand push = git.push().setRemote("origin").setRefSpecs(new RefSpec("HEAD:refs/heads/" + model)).setPushTags();
                                         push.setCredentialsProvider(new UsernamePasswordCredentialsProvider(GH_USER, System.getenv("GH_TOKEN")));
