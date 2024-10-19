@@ -13,6 +13,7 @@ public class CapSolver {
     private static final String CAPSOLVER_API = "https://api.capsolver.com/";
     private static final String CAPSOLVER_CREATE = CAPSOLVER_API + "createTask";
     private static final String CAPSOLVER_GET = CAPSOLVER_API + "getTaskResult";
+    private static final String CAPSOLVER_APP_ID = "83CEF493-F610-44C4-BCA2-9783EB4823E4";
 
     public enum CaptchaType {
         HCAPTCHA("HCaptchaTaskProxyLess");
@@ -35,6 +36,7 @@ public class CapSolver {
     public String solve(CaptchaType type, String siteKey, String siteUrl) {
         JSONObject payload = new JSONObject();
         payload.put("clientKey", apiKey);
+        payload.put("appId", CAPSOLVER_APP_ID);
         JSONObject task = new JSONObject();
         task.put("type", type.taskType);
         task.put("websiteKey", siteKey);
