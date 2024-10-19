@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021  Tim Zimmermann <tim@linux4.de>
+  Copyright (C) 2021-2024  Tim Zimmermann <tim@linux4.de>
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as
@@ -17,7 +17,10 @@
 package de.linux4.samsungfwbot;
 
 import java.sql.*;
-import java.util.*;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
 public class SamsungDeviceDatabase {
 

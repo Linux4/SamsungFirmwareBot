@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021-2022  Tim Zimmermann <tim@linux4.de>
+  Copyright (C) 2021-2024  Tim Zimmermann <tim@linux4.de>
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as
@@ -16,6 +16,9 @@
  */
 package de.linux4.samsungfwbot;
 
+import de.linux4.samsungfwbot.io.ArchiveUtils;
+import de.linux4.samsungfwbot.io.FileUtilsInternal;
+import de.linux4.samsungfwbot.jgit.ForceAddFileTreeIterator;
 import org.apache.commons.io.FileUtils;
 import org.eclipse.jgit.api.CreateBranchCommand;
 import org.eclipse.jgit.api.Git;
@@ -41,7 +44,10 @@ import org.telegram.telegrambots.updatesreceivers.DefaultBotSession;
 import java.io.File;
 import java.io.IOException;
 import java.text.ParseException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.Enumeration;
+import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -161,42 +167,42 @@ public class SamsungFWBot extends TelegramLongPollingBot {
                 System.out.println("Processing model " + model);
 
                 firmwareCheckExecutor.submit(() -> {
-                            boolean found = false;
+                    boolean found = false;
 
-                            for (String region : deviceDb.getRegionsByModel(model)) {
-                                SamsungFWInfo info = SamsungFWInfo.fetchLatest(model, region);
+                    for (String region : deviceDb.getRegionsByModel(model)) {
+                        SamsungFWInfo info = SamsungFWInfo.fetchLatest(model, region);
 
-                                if (info != null) {
-                                    System.out.printf("Found firmware %s/%s for model %s%n", info.getPDA(), region, model);
-                                    found = true;
+                        if (info != null) {
+                            System.out.printf("Found firmware %s/%s for model %s%n", info.getPDA(), region, model);
+                            found = true;
 
-                                    if (info.isNewerThan(db.getPDA(model))) {
-                                        InlineKeyboardMarkup.InlineKeyboardMarkupBuilder keyboardBuilder =
-                                                InlineKeyboardMarkup.builder().keyboardRow(
-                                                        List.of(InlineKeyboardButton.builder().text("Download")
-                                                                .url(info.getDownloadURL()).build()));
-                                        InlineKeyboardMarkup keyboard = keyboardBuilder.build();
+                            if (info.isNewerThan(db.getPDA(model))) {
+                                InlineKeyboardMarkup.InlineKeyboardMarkupBuilder keyboardBuilder =
+                                        InlineKeyboardMarkup.builder().keyboardRow(
+                                                List.of(InlineKeyboardButton.builder().text("Download")
+                                                        .url(info.getDownloadURL()).build()));
+                                InlineKeyboardMarkup keyboard = keyboardBuilder.build();
 
-                                        messageQueue.add(new TelegramMessage(channelFw, "New firmware update available \n \n"
-                                                + "Device: " + info.getDeviceName() + " \n"
-                                                + "Model: " + info.getModel() + " \n"
-                                                + "OS Version: " + info.getOSVersion() + " \n"
-                                                + "PDA Version: " + info.getPDA() + " \n"
-                                                + "Release Date: " + SamsungFWInfo.DATE_FORMAT.format(info.getBuildDate()) + " \n"
-                                                + "Security Patch Level: " + SamsungFWInfo.DATE_FORMAT.format(info.getSecurityPatch()) + " \n\n"
-                                                + "Changelog:  \n"
-                                                + info.getChangelog() + " \n",
-                                                keyboard));
+                                messageQueue.add(new TelegramMessage(channelFw, "New firmware update available \n \n"
+                                        + "Device: " + info.getDeviceName() + " \n"
+                                        + "Model: " + info.getModel() + " \n"
+                                        + "OS Version: " + info.getOSVersion() + " \n"
+                                        + "PDA Version: " + info.getPDA() + " \n"
+                                        + "Release Date: " + SamsungFWInfo.DATE_FORMAT.format(info.getBuildDate()) + " \n"
+                                        + "Security Patch Level: " + SamsungFWInfo.DATE_FORMAT.format(info.getSecurityPatch()) + " \n\n"
+                                        + "Changelog:  \n"
+                                        + info.getChangelog() + " \n",
+                                        keyboard));
 
-                                        db.setPDA(model, info.getPDA());
-                                    }
-                                }
+                                db.setPDA(model, info.getPDA());
                             }
+                        }
+                    }
 
-                            if (!found) {
-                                System.err.println("ERROR: Model " + model + " not found in any known region! Known Regions: " + deviceDb.getRegionsByModel(model));
-                            }
-                        });
+                    if (!found) {
+                        System.err.println("ERROR: Model " + model + " not found in any known region! Known Regions: " + deviceDb.getRegionsByModel(model));
+                    }
+                });
 
                 kernelCheckExecutor.submit(() -> {
                     SamsungKernelInfo info = SamsungKernelInfo.fetchLatest(model);

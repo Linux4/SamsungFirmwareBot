@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2022  Tim Zimmermann <tim@linux4.de>
+  Copyright (C) 2022-2024  Tim Zimmermann <tim@linux4.de>
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as
@@ -14,7 +14,7 @@
   You should have received a copy of the GNU General Public License
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-package de.linux4.samsungfwbot;
+package de.linux4.samsungfwbot.io;
 
 import java.io.File;
 import java.io.IOException;

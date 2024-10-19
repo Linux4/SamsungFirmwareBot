@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021  Tim Zimmermann <tim@linux4.de>
+  Copyright (C) 2021-2024  Tim Zimmermann <tim@linux4.de>
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as
@@ -16,14 +16,11 @@
  */
 package de.linux4.samsungfwbot;
 
-import org.jsoup.HttpStatusException;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
-import java.io.IOException;
-import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
@@ -135,14 +132,14 @@ public class SamsungFWInfo {
 
     public static SamsungFWInfo fetchLatest(String model, String region) {
         try {
-            Document doc = Jsoup.connect(DOC_BASE_URL + model + "/" + region + DOC_NAME).timeout(10*60*1000).get();
+            Document doc = Jsoup.connect(DOC_BASE_URL + model + "/" + region + DOC_NAME).timeout(10 * 60 * 1000).get();
 
             Element input = doc.getElementById("dflt_page");
 
             if (input != null) {
                 String magic = input.val().split("/")[3];
 
-                Document changelog = Jsoup.connect(DOC_BASE_URL + model + "/" + magic + DOC_ENG).timeout(10*60*1000).get();
+                Document changelog = Jsoup.connect(DOC_BASE_URL + model + "/" + magic + DOC_ENG).timeout(10 * 60 * 1000).get();
                 Elements changelogEntries = changelog.getElementsByClass("row");
 
                 if (changelogEntries.size() >= 2) {

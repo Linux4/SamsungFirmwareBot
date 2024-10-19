@@ -1,4 +1,20 @@
-package de.linux4.samsungfwbot;
+/*
+  Copyright (C) 2022-2024  Tim Zimmermann <tim@linux4.de>
+
+  This program is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as
+  published by the Free Software Foundation, either version 3 of the
+  License, or (at your option) any later version.
+
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+package de.linux4.samsungfwbot.io;
 
 import org.apache.commons.compress.archivers.ArchiveInputStream;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
@@ -6,7 +22,10 @@ import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
 import org.apache.commons.io.IOUtils;
 
-import java.io.*;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.file.DirectoryNotEmptyException;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
@@ -19,7 +38,7 @@ import java.util.List;
 public class ArchiveUtils {
 
     public static final int MAX_FILE_SIZE = 100 * 1000 * 1000; // 100 MB
-    public static final byte[] ZIP_MAGIC = new byte[] { 0x50, 0x4b, 0x03, 0x04 };
+    public static final byte[] ZIP_MAGIC = new byte[]{0x50, 0x4b, 0x03, 0x04};
 
     public static boolean isZip(File file) throws IOException {
         byte[] magic = new byte[ZIP_MAGIC.length];
