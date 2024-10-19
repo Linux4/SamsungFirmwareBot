@@ -48,7 +48,7 @@ jobs:
        GH_TOKEN: ${{ secrets.GH_TOKEN }}
        CAPSOLVER_TOKEN: ${{ secrets.CAPSOLVER_TOKEN }}
       run: |
-       java -jar target/SamsungFirmwareBot.jar samsungfirmware_bot $BOT_TOKEN $CAPSOLVER_TOKEN @samsungfw_tracker @samsungkernel_tracker oneshot
+       java -jar target/SamsungFirmwareBot.jar $BOT_TOKEN $CAPSOLVER_TOKEN @samsungfw_tracker @samsungkernel_tracker oneshot
 
     - name: Update databases
       run: |
