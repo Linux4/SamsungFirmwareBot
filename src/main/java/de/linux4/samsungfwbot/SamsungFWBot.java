@@ -83,7 +83,8 @@ public class SamsungFWBot implements LongPollingSingleThreadUpdateConsumer{
             SamsungFWBot bot = new SamsungFWBot(args[0], args[1], args[2], args[3], oneshot);
             botsApplication.registerBot(args[0], bot);
             bot.run();
-        } catch (TelegramApiException ex) {
+            botsApplication.close();
+        } catch (Exception ex) {
             ex.printStackTrace();
         }
     }
