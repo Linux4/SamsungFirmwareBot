@@ -174,7 +174,6 @@ public class SamsungDeviceScraper {
                 .reduce((x, y) -> Streams.concat(x.stream(), y.stream()).toList()).get();
         System.out.println("Total Devices = " + devices.size());
         devices = devices.stream().filter(device -> device.name.contains("Galaxy")).toList();
-        devices = devices.stream().filter(device -> !device.name.contains("Watch")).toList();
         System.out.println("Filtered Devices (Stage 1) = " + devices.size());
         for (int i = 0; i < devices.size(); i++) {
             DeviceMeta device = devices.get(i);
